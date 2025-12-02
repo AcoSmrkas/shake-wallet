@@ -19,7 +19,7 @@ import {
 } from "@src/ui/components/OnboardingModal";
 import {DefaultConnectLedgerSteps} from "@src/ui/components/ConnectLedgerSteps";
 import "./onboarding.scss";
-import BobIcon from "@src/static/icons/bob-black.png";
+import ShakeIcon from "@src/static/icons/shake-black.svg";
 import {USB} from "hsd-ledger/lib/hsd-ledger-browser";
 import {getAppVersion, getAccountXpub} from "@src/util/withLedger";
 import {isSupported} from "@src/util/webUSB";
@@ -41,7 +41,7 @@ export default function Onboarding(): ReactElement {
   const [seedphrase, setSeedphrase] = useState("");
   const [password, setPassword] = useState("");
   const [isLedger, setIsLedger] = useState(false);
-  const [optIn, setOptIn] = useState(false);
+  const [optIn] = useState(false);
   const history = useHistory();
   const dispatch = useDispatch();
 
@@ -112,14 +112,7 @@ export default function Onboarding(): ReactElement {
             seedphrase={seedphrase}
             setSeedphrase={setSeedphrase}
             isImporting={onboardingType === "import"}
-          />
-        </Route>
-        <Route path="/onboarding/opt-in-analytics">
-          <OptInAnalytics
-            optIn={optIn}
-            setOptIn={setOptIn}
             onCreateWallet={onCreateWallet}
-            isConnectLedger={onboardingType === "connect"}
           />
         </Route>
         <Route path="/onboarding/connect-ledger">
@@ -162,10 +155,10 @@ function Welcome(props: {}): ReactElement {
       <OnboardingModalContent center>
         <div
           className="welcome__logo"
-          style={{backgroundImage: `url(${BobIcon})`}}
+          style={{backgroundImage: `url(${ShakeIcon})`}}
         />
         <p>
-          <b>Hi, I am Bob (Extension).</b>
+          <b>Hi, Welcome to Shake Wallet.</b>
         </p>
         <small className="welcome__paragraph">
           I am your Handshake Wallet in a browser extension. I can help you take
@@ -254,14 +247,14 @@ function Terms(props: {
         backBtn={<Icon fontAwesome="fa-arrow-left" size={1.25} />}
         onClose={initialized ? () => window.close() : undefined}
         currentStep={1}
-        maxStep={props.isConnectLedger ? 5 : 6}
+        maxStep={props.isConnectLedger ? 4 : 5}
       />
       <OnboardingModalContent>
         <div className="title">
           <strong>Terms of use</strong>
           <div className="title__detail">
             <small>
-              Please review and agree to the Bob Wallet’s terms of use.
+              Please review and agree to the Shake Wallet’s terms of use.
             </small>
           </div>
         </div>
@@ -337,7 +330,7 @@ function NameYourWallet(props: {
         onBack={onBack}
         onClose={initialized ? () => window.close() : undefined}
         currentStep={2}
-        maxStep={props.isConnectLedger ? 5 : 6}
+        maxStep={props.isConnectLedger ? 4 : 5}
       />
       <OnboardingModalContent>
         <div className="title">
@@ -409,7 +402,7 @@ function CreatePassword(props: {
 
   const onNext = useCallback(() => {
     if (props.isConnectLedger) {
-      history.push("/onboarding/opt-in-analytics");
+      history.push("/onboarding/connect-ledger");
     } else {
       history.push("/onboarding/seedphrase-warning");
     }
@@ -422,7 +415,7 @@ function CreatePassword(props: {
         onBack={() => history.push("/onboarding/name-your-wallet")}
         onClose={initialized ? () => window.close() : undefined}
         currentStep={3}
-        maxStep={props.isConnectLedger ? 5 : 6}
+        maxStep={props.isConnectLedger ? 4 : 5}
       />
       <OnboardingModalContent>
         <div className="title">
@@ -495,7 +488,7 @@ function SeedWarning(props: {isImporting: boolean}): ReactElement {
         onBack={() => history.push("/onboarding/create-password")}
         onClose={initialized ? () => window.close() : undefined}
         currentStep={4}
-        maxStep={6}
+        maxStep={5}
       />
       <OnboardingModalContent>
         <b>
@@ -563,7 +556,7 @@ function RevealSeedphrase(props: {
         onBack={() => history.push("/onboarding/seedphrase-warning")}
         onClose={initialized ? () => window.close() : undefined}
         currentStep={5}
-        maxStep={6}
+        maxStep={5}
       />
       <OnboardingModalContent>
         <div className="title">
@@ -607,9 +600,12 @@ function ConfirmSeedphrase(props: {
   seedphrase: string;
   setSeedphrase: (seedphrase: string) => void;
   isImporting: boolean;
+  onCreateWallet: () => Promise<void>;
 }): ReactElement {
   const history = useHistory();
   const initialized = useInitialized();
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [enteredSeeds, setEnteredSeeds] = useState<string[]>(
     Array(24).fill("")
@@ -650,6 +646,17 @@ function ConfirmSeedphrase(props: {
     }
   }, [props.isImporting]);
 
+  const onNext = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      await props.onCreateWallet();
+    } catch (e: any) {
+      setErrorMessage(e.message);
+      setLoading(false);
+    }
+  }, [props.onCreateWallet]);
+
   let disabled = false;
   const nonEmptySeeds = enteredSeeds.filter((s) => !!s);
 
@@ -670,7 +677,7 @@ function ConfirmSeedphrase(props: {
         onBack={onBack}
         onClose={initialized ? () => window.close() : undefined}
         currentStep={5}
-        maxStep={6}
+        maxStep={5}
       />
       <OnboardingModalContent>
         <div className="title">
@@ -726,100 +733,12 @@ function ConfirmSeedphrase(props: {
         </div>
       </OnboardingModalContent>
       <OnboardingModalFooter>
-        <Button
-          onClick={() => history.push("/onboarding/opt-in-analytics")}
-          disabled={disabled}
-        >
-          Next
-        </Button>
-      </OnboardingModalFooter>
-    </OnboardingModal>
-  );
-}
-
-function OptInAnalytics(props: {
-  isConnectLedger: boolean;
-  onCreateWallet: () => Promise<void>;
-  optIn: boolean;
-  setOptIn: (optIn: boolean) => void;
-}): ReactElement {
-  const history = useHistory();
-  const {optIn, setOptIn} = props;
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(false);
-  const initialized = useInitialized();
-
-  useEffect(() => {
-    (async function () {
-      const res = await postMessage({
-        type: MessageTypes.GET_ANALYTICS,
-      });
-      setOptIn(res as boolean);
-    })();
-  }, []);
-
-  useEffect(() => {
-    postMessage({
-      type: MessageTypes.MP_TRACK,
-      payload: {
-        name: "Onboarding View",
-        data: {
-          view: "Opt In Analytics",
-        },
-      },
-    });
-  }, []);
-
-  const onCreateWallet = useCallback(async () => {
-    setLoading(true);
-    try {
-      await props.onCreateWallet();
-    } catch (e: any) {
-      setErrorMessage(e.message);
-    }
-    setLoading(false);
-  }, [props.onCreateWallet]);
-
-  const onBack = useCallback(() => {
-    if (props.isConnectLedger) {
-      history.push("/onboarding/create-password");
-    } else {
-      history.push("/onboarding/confirm-seedphrase");
-    }
-  }, [props.isConnectLedger]);
-
-  const onNext = useCallback(() => {
-    if (props.isConnectLedger) {
-      history.push("/onboarding/connect-ledger");
-    } else {
-      onCreateWallet();
-    }
-  }, [props.isConnectLedger]);
-
-  return (
-    <OnboardingModal>
-      <OnboardingModalHeader
-        backBtn={<Icon fontAwesome="fa-arrow-left" size={1.25} />}
-        onBack={onBack}
-        onClose={initialized ? () => window.close() : undefined}
-        currentStep={props.isConnectLedger ? 4 : 6}
-        maxStep={props.isConnectLedger ? 5 : 6}
-      />
-      <OnboardingModalContent>
-        <div className="title">
-          <strong>Opt in to analytics</strong>
-          <div className="title__detail">
-            <small>Do you want to send anonymous usage data to Kyokan?</small>
-          </div>
-        </div>
-      </OnboardingModalContent>
-      <OnboardingModalFooter>
         {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
-        <label className="terms__checkbox" htmlFor="opt-in">
-          <Checkbox id="opt-in" checked={optIn} onChange={() => setOptIn(!optIn)} />
-          <small>Yes, opt me in.</small>
-        </label>
-        <Button onClick={onNext} disabled={loading} loading={loading}>
+        <Button
+          onClick={onNext}
+          disabled={disabled || loading}
+          loading={loading}
+        >
           Next
         </Button>
       </OnboardingModalFooter>
@@ -934,10 +853,10 @@ function ConnectLedger(props: {
     <OnboardingModal>
       <OnboardingModalHeader
         backBtn={<Icon fontAwesome="fa-arrow-left" size={1.25} />}
-        onBack={() => history.push("/onboarding/opt-in-analytics")}
+        onBack={() => history.push("/onboarding/create-password")}
         onClose={initialized ? () => window.close() : undefined}
-        currentStep={5}
-        maxStep={5}
+        currentStep={4}
+        maxStep={4}
       />
       <OnboardingModalContent>
         <div className="title">

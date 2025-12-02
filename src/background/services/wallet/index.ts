@@ -35,7 +35,7 @@ import {ActionType as QueueActionType, setTXQueue} from "@src/ui/ducks/queue";
 import {toDollaryDoos} from "@src/util/number";
 import BlindBid from "@src/background/services/wallet/blind-bid";
 import BidReveal from "@src/background/services/wallet/bid-reveal";
-import {UpdateRecordType} from "@src/contentscripts/bob3";
+import {UpdateRecordType} from "@src/contentscripts/shake";
 import {getBidBlind, getTXAction} from "@src/util/transaction";
 import {setInfo} from "@src/ui/ducks/node";
 import nodeService from "../node";
@@ -156,9 +156,9 @@ class WalletService extends GenericService {
     });
   };
 
-  pushBobMessage = async (message: string) => {
+  pushShakeMessage = async (message: string) => {
     await pushMessage({
-      type: AppActionType.SET_BOB_MESSAGE,
+      type: AppActionType.SET_SHAKE_MESSAGE,
       payload: message,
     });
   };
@@ -458,7 +458,7 @@ class WalletService extends GenericService {
 
     let i = 0;
     for (const item of details) {
-      this.pushBobMessage(`Loading ${++i} of ${details.length} TX...`);
+      this.pushShakeMessage(`Loading ${++i} of ${details.length} TX...`);
       const json: Transaction = item.getJSON(this.network, latestBlock.height);
       const action = getTXAction(json);
       const blind = action === "BID" && getBidBlind(json);
@@ -472,7 +472,7 @@ class WalletService extends GenericService {
     }
 
     this.transactions = transactions;
-    this.pushBobMessage("");
+    this.pushShakeMessage("");
     return this.transactions;
   };
 
@@ -1444,7 +1444,7 @@ class WalletService extends GenericService {
       return acc;
     }, []);
 
-    await this.pushBobMessage(`Found ${transactions.length} transaction.`);
+    await this.pushShakeMessage(`Found ${transactions.length} transaction.`);
 
     let retries = 0;
     for (let i = 0; i < transactions.length; i++) {
@@ -1462,7 +1462,7 @@ class WalletService extends GenericService {
           Buffer.from(transactions[i].hash, "hex")
         );
 
-        await this.pushBobMessage(
+        await this.pushShakeMessage(
           `Inserting TX # ${i} of ${transactions.length}....`
         );
 
@@ -1696,7 +1696,7 @@ class WalletService extends GenericService {
     endDepth = LOOKAHEAD,
     transactions: any[] = []
   ): Promise<any[]> => {
-    await this.pushBobMessage(
+    await this.pushShakeMessage(
       `Scanning receive depth ${startDepth}-${endDepth}...`
     );
     const addresses = await this.genAddresses(startDepth, endDepth, "receive");
@@ -1730,7 +1730,7 @@ class WalletService extends GenericService {
     endDepth = LOOKAHEAD,
     transactions: any[] = []
   ): Promise<any[]> => {
-    await this.pushBobMessage(
+    await this.pushShakeMessage(
       `Scanning change depth ${startDepth}-${endDepth}...`
     );
     const addresses = await this.genAddresses(startDepth, endDepth, "change");
@@ -1766,7 +1766,7 @@ class WalletService extends GenericService {
   fullRescan = async (start = 0) => {
     this.rescanning = true;
     this.pushState();
-    await this.pushBobMessage("Start rescanning...");
+    await this.pushShakeMessage("Start rescanning...");
     const latestBlockEnd = await this.exec("node", "getLatestBlock");
 
     const changeTXs = await this.getAllChangeTXs(start, latestBlockEnd.height);
@@ -1781,12 +1781,12 @@ class WalletService extends GenericService {
 
     this.rescanning = false;
     this.pushState();
-    await this.pushBobMessage("");
+    await this.pushShakeMessage("");
     return;
   };
 
   processBlock = async (blockHeight: number) => {
-    await this.pushBobMessage(`Fetching block # ${blockHeight}....`);
+    await this.pushShakeMessage(`Fetching block # ${blockHeight}....`);
 
     const {txs: transactions, ...entryOption} = await this.exec(
       "node",
@@ -1794,7 +1794,7 @@ class WalletService extends GenericService {
       blockHeight
     );
 
-    await this.pushBobMessage(`Processing block # ${entryOption.height}....`);
+    await this.pushShakeMessage(`Processing block # ${entryOption.height}....`);
     let retries = 0;
 
     for (let i = 0; i < transactions.length; i++) {
@@ -1864,7 +1864,7 @@ class WalletService extends GenericService {
     this.rescanning = true;
     await this.pushState();
 
-    await this.pushBobMessage("Checking status...");
+    await this.pushShakeMessage("Checking status...");
     const latestBlockNow = await this.exec("node", "getLatestBlock");
     const latestBlockLast = await get(
       this.store,
@@ -1873,7 +1873,7 @@ class WalletService extends GenericService {
 
     try {
       if (latestBlockLast && latestBlockLast.height >= latestBlockNow.height) {
-        await this.pushBobMessage("I am synchronized.");
+        await this.pushShakeMessage("I am synchronized.");
       } else if (
         latestBlockLast &&
         latestBlockNow.height - latestBlockLast.height <= 100
@@ -1888,12 +1888,12 @@ class WalletService extends GenericService {
 
       this.rescanning = false;
       await this.pushState();
-      await this.pushBobMessage(`I am synchonized.`);
+      await this.pushShakeMessage(`I am synchonized.`);
     } catch (e) {
       console.error(e);
       this.rescanning = false;
       await this.pushState();
-      await this.pushBobMessage(`Something went wrong while rescanning.`);
+      await this.pushShakeMessage(`Something went wrong while rescanning.`);
     } finally {
       await pushMessage({
         type: ActionType.SET_TRANSACTIONS,
@@ -2076,7 +2076,7 @@ class WalletService extends GenericService {
   };
 
   async _ledgerInputs(wallet: any, tx: any) {
-    // For mtx created in Bob (instead of hsd), the inputs don't include
+    // For mtx created in Shake Wallet (instead of hsd), the inputs don't include
     // path, so they need to be recreated as LedgerInput
     const ledgerInputs = [];
 

@@ -7,8 +7,8 @@ import MessageTypes from "@src/util/messageTypes";
 import {type Explorer, EXPLORERS} from "@src/util/explorer";
 
 export enum ActionType {
-  SET_BOB_MOVING = "app/setBobMoving",
-  SET_BOB_MESSAGE = "app/setBobMessage",
+  SET_SHAKE_MOVING = "app/setShakeMoving",
+  SET_SHAKE_MESSAGE = "app/setShakeMessage",
   SET_MULTI_ACCOUNTS_ENABLED = "app/setMultiAccountsEnabled",
   SET_EXPLORER = "app/setExplorer",
 }
@@ -21,22 +21,22 @@ type Action = {
 };
 
 type State = {
-  isBobMoving: boolean;
-  bobMessage: string;
+  isShakeMoving: boolean;
+  shakeMessage: string;
   multiAccountsEnabled: boolean;
   explorer: Explorer;
 };
 
 const initialState: State = {
-  isBobMoving: false,
-  bobMessage: "",
+  isShakeMoving: false,
+  shakeMessage: "",
   multiAccountsEnabled: false,
   explorer: EXPLORERS[0],
 };
 
-export const setBobMoving = (moving: boolean) => {
+export const setShakeMoving = (moving: boolean) => {
   return {
-    type: ActionType.SET_BOB_MOVING,
+    type: ActionType.SET_SHAKE_MOVING,
     payload: moving,
   };
 };
@@ -73,15 +73,15 @@ export const fetchExplorer =
 
 export default function app(state = initialState, action: Action): State {
   switch (action.type) {
-    case ActionType.SET_BOB_MOVING:
+    case ActionType.SET_SHAKE_MOVING:
       return {
         ...state,
-        isBobMoving: action.payload,
+        isShakeMoving: action.payload,
       };
-    case ActionType.SET_BOB_MESSAGE:
+    case ActionType.SET_SHAKE_MESSAGE:
       return {
         ...state,
-        bobMessage: action.payload,
+        shakeMessage: action.payload,
       };
     case ActionType.SET_MULTI_ACCOUNTS_ENABLED:
       return {
@@ -98,15 +98,15 @@ export default function app(state = initialState, action: Action): State {
   }
 }
 
-export const useBobMoving = () => {
+export const useShakeMoving = () => {
   return useSelector((state: AppRootState) => {
-    return state.app.isBobMoving;
+    return state.app.isShakeMoving;
   }, deepEqual);
 };
 
-export const useBobMessage = () => {
+export const useShakeMessage = () => {
   return useSelector((state: AppRootState) => {
-    return state.app.bobMessage;
+    return state.app.shakeMessage;
   }, deepEqual);
 };
 

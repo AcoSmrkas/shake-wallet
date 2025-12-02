@@ -17,7 +17,7 @@ import {useLedgerConnect} from "@src/ui/ducks/ledger";
 import AppHeader from "@src/ui/components/AppHeader";
 import Login from "@src/ui/pages/Login";
 import {Redirect, Route, Switch} from "react-router";
-import BobMoveIcon from "@src/static/icons/bob-moves.gif";
+import ShakeMoveIcon from "@src/static/icons/shake-moves.svg";
 import Icon from "@src/ui/components/Icon";
 import Home from "@src/ui/pages/Home";
 import {fetchLatestBlock} from "@src/ui/ducks/node";
@@ -94,7 +94,7 @@ export default function Popup(): ReactElement {
   if (loading) {
     return (
       <div className={`popup__loading ${theme}`}>
-        <Icon url={BobMoveIcon} size={4} />
+        <Icon url={ShakeMoveIcon} size={4} />
         <small>Initializing...</small>
       </div>
     );

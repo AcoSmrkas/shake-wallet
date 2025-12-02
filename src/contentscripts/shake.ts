@@ -13,7 +13,7 @@ let nonce = 0;
 
 
 /**
- * Connect to Bob Extension
+ * Connect to Shake Wallet
  * @returns Wallet client
  */
 async function connect() {
@@ -297,14 +297,14 @@ const wallet = {
   hashName,
 };
 
-window.bob3 = {
+window.shake = {
   connect,
   isLocked,
 };
 
 declare global {
   interface Window {
-    bob3: {
+    shake: {
       connect: () => Promise<typeof wallet>;
       isLocked: () => Promise<boolean>;
     };
@@ -316,7 +316,7 @@ async function post(message: MessageAction) {
   return new Promise((resolve, reject) => {
     const messageNonce = nonce++;
     window.postMessage({
-      target: 'bob3-contentscript',
+      target: 'shake-contentscript',
       message,
       nonce: messageNonce,
     }, '*');
@@ -327,7 +327,7 @@ async function post(message: MessageAction) {
 
 window.addEventListener('message', (event) => {
   const data = event.data;
-  if (data && data.target === 'bob3-injectedscript') {
+  if (data && data.target === 'shake-injectedscript') {
     if (!promises[data.nonce]) return;
 
     const [err, res] = data.payload;

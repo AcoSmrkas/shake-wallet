@@ -24,7 +24,7 @@ const controllers: {
     switch (type) {
       case 'send':
         app.exec("analytics", "track", {
-          name: "Bob3 Send",
+          name: "Shake Send",
         });
 
         const {amount, address} = payload;
@@ -42,7 +42,7 @@ const controllers: {
         break;
       case 'open':
         app.exec("analytics", "track", {
-          name: "Bob3 Open",
+          name: "Shake Open",
         });
 
         tx = await app.exec("wallet", "createOpen", payload);
@@ -50,7 +50,7 @@ const controllers: {
         break;
       case 'bid':
         app.exec("analytics", "track", {
-          name: "Bob3 Bid",
+          name: "Shake Bid",
         });
 
         tx = await app.exec("wallet", "createBid", payload);
@@ -61,7 +61,7 @@ const controllers: {
         break;
       case 'reveal':
         app.exec("analytics", "track", {
-          name: "Bob3 Reveal",
+          name: "Shake Reveal",
         });
 
         tx = await app.exec("wallet", "createReveal", {
@@ -72,7 +72,7 @@ const controllers: {
         break;
       case 'update':
         app.exec("analytics", "track", {
-          name: "Bob3 Update",
+          name: "Shake Update",
         });
 
         tx = await app.exec("wallet", "createUpdate", payload);
@@ -81,7 +81,7 @@ const controllers: {
         break;
       case 'redeem':
         app.exec("analytics", "track", {
-          name: "Bob3 Redeem",
+          name: "Shake Redeem",
         });
 
         tx = await app.exec("wallet", "createRedeem", {
@@ -92,7 +92,7 @@ const controllers: {
         break;
       case 'custom':
         app.exec("analytics", "track", {
-          name: "Bob3 Create Tx",
+          name: "Shake Create Tx",
         });
 
         tx = await app.exec("wallet", "createCustomTx", payload);
@@ -116,7 +116,7 @@ const controllers: {
       const {locked} = await app.exec("wallet", "getState");
 
       app.exec("analytics", "track", {
-        name: "Bob3 Connect",
+        name: "Shake Connect",
       });
 
       if (locked) {
@@ -152,7 +152,7 @@ const controllers: {
       }
 
       app.exec('analytics', 'track', {
-        name: 'Bob3 Sign',
+        name: 'Shake Sign',
       });
 
       await app.exec('wallet', 'createSignMessageRequest', msg, address);
@@ -171,7 +171,7 @@ const controllers: {
       }
 
       app.exec('analytics', 'track', {
-        name: 'Bob3 Sign with Name',
+        name: 'Shake Sign with Name',
       });
 
       await app.exec('wallet', 'createSignMessageRequest', msg, undefined, name);

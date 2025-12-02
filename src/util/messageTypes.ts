@@ -76,7 +76,7 @@ enum MessageTypes {
   // analytics
   MP_TRACK = "mp_track",
 
-  // Bob3
+  // Shake
   CONNECT = "connect",
   DISCONNECTED = "disconnected",
   NEW_BLOCK = "new_block",

@@ -1,7 +1,7 @@
 import MessageTypes from "@src/util/messageTypes";
 
 (async function () {
-  const url = chrome.runtime.getURL("js/bob3.js");
+  const url = chrome.runtime.getURL("js/shake.js");
   const container = document.head || document.documentElement;
   const scriptTag = document.createElement("script");
   scriptTag.src = url;
@@ -11,11 +11,11 @@ import MessageTypes from "@src/util/messageTypes";
 
   window.addEventListener("message", async (event) => {
     const data = event.data;
-    if (data && data.target === "bob3-contentscript") {
+    if (data && data.target === "shake-contentscript") {
       const res = await chrome.runtime.sendMessage(data.message);
       window.postMessage(
         {
-          target: "bob3-injectedscript",
+          target: "shake-injectedscript",
           payload: res,
           nonce: data.nonce,
         },
@@ -29,7 +29,7 @@ import MessageTypes from "@src/util/messageTypes";
       case MessageTypes.DISCONNECTED:
         window.postMessage(
           {
-            target: "bob3-injectedscript",
+            target: "shake-injectedscript",
             payload: [null, null],
             nonce: "disconnect",
           },
@@ -39,7 +39,7 @@ import MessageTypes from "@src/util/messageTypes";
       case MessageTypes.NEW_BLOCK:
         window.postMessage(
           {
-            target: "bob3-injectedscript",
+            target: "shake-injectedscript",
             payload: [null, action.payload],
             nonce: "newBlock",
           },

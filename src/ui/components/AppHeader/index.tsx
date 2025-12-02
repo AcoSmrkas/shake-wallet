@@ -1,11 +1,11 @@
 import React, {ReactElement, useCallback} from "react";
 import ReactTooltip from "react-tooltip";
-import BobIcon from "../../../static/icons/bob-black.png";
-import BobMoveIcon from "../../../static/icons/bob-moves.gif";
+import ShakeIcon from "../../../static/icons/shake-black.svg";
+import ShakeMoveIcon from "../../../static/icons/shake-moves.svg";
 import "./app-header.scss";
 import Icon from "@src/ui/components/Icon";
 import WalletMenu from "@src/ui/components/WalletMenu";
-import {useBobMessage, useBobMoving} from "@src/ui/ducks/app";
+import {useShakeMessage, useShakeMoving} from "@src/ui/ducks/app";
 import classNames from "classnames";
 import {useWalletState} from "@src/ui/ducks/wallet";
 import {useCurrentBlockHeight} from "@src/ui/ducks/node";
@@ -14,8 +14,8 @@ import {useExplorer} from "@src/ui/ducks/app";
 
 export default function AppHeader(): ReactElement {
   const {rescanning} = useWalletState();
-  const bobMessage = useBobMessage();
-  const bobMoving = useBobMoving();
+  const shakeMessage = useShakeMessage();
+  const shakeMoving = useShakeMoving();
   const currentBlockHeight = useCurrentBlockHeight();
   const explorer = useExplorer();
 
@@ -30,19 +30,19 @@ export default function AppHeader(): ReactElement {
     <>
       <div className="app-header">
         <div className="app-header__l">
-          <div data-for="bob-message" data-tip>
+          <div data-for="shake-message" data-tip>
             <Icon
-              className={classNames("app-header__bob-icon", {
-                "app-header__bob-icon--moving": rescanning || bobMoving,
+              className={classNames("app-header__shake-icon", {
+                "app-header__shake-icon--moving": rescanning || shakeMoving,
               })}
-              url={BobIcon}
+              url={ShakeIcon}
               size={2.5}
             />
             <Icon
-              className={classNames("app-header__bob-move-icon", {
-                "app-header__bob-move-icon--moving": rescanning || bobMoving,
+              className={classNames("app-header__shake-move-icon", {
+                "app-header__shake-move-icon--moving": rescanning || shakeMoving,
               })}
-              url={BobMoveIcon}
+              url={ShakeMoveIcon}
               size={2.625}
             />
           </div>
@@ -65,10 +65,10 @@ export default function AppHeader(): ReactElement {
         </div>
       </div>
       <ReactTooltip
-        id="bob-message"
+        id="shake-message"
         place="bottom"
         type="light"
-        getContent={() => bobMessage || "Welcome back!"}
+        getContent={() => shakeMessage || "Welcome back!"}
       />
     </>
   );

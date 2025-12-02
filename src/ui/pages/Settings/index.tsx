@@ -428,15 +428,15 @@ function SecurityContent(): ReactElement {
       >
         <small>Reveal wallet seed phrase.</small>
       </SettingGroup>
-      <SettingGroup
+      {/* <SettingGroup
         name="Analytics Opt-in"
         switchBtnProps={{
           update: updateAnalytics,
           active: optInAnalytics,
         }}
       >
-        <small>Send analytics to Kyokan to help improve Bob.</small>
-      </SettingGroup>
+        <small>Send analytics to Aco to help improve Shake Wallet.</small>
+      </SettingGroup> */}
     </>
   );
 }

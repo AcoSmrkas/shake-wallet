@@ -28,6 +28,7 @@ class AnalyticsService extends GenericService {
   }
 
   async initTracking() {
+    return;
     const optIn = await this.exec("setting", "getAnalytics");
 
     if (optIn && !this.mp) {
@@ -49,6 +50,7 @@ class AnalyticsService extends GenericService {
   }
 
   async track(name: string, data: any) {
+    return;
     await this.initTracking();
     if (!this.mp) {
       return;
@@ -58,6 +60,7 @@ class AnalyticsService extends GenericService {
   }
 
   async start() {
+    return;
     this.store = bdb.create("/wallet-store");
     await this.store.open();
     await this.initTracking();

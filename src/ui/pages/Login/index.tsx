@@ -1,5 +1,5 @@
 import React, { ReactElement, useCallback, useEffect, useState } from "react";
-import BobIcon from "../../../static/icons/bob-black-large.png";
+import ShakeIcon from "../../../static/icons/shake-black.svg";
 import "./login.scss";
 import Icon from "@src/ui/components/Icon";
 import Button from "@src/ui/components/Button";
@@ -47,8 +47,8 @@ export default function Login(props: Props): ReactElement {
     <div className="login">
       <div className="login__content">
         <div>
-          <Icon className="login__content__logo" url={BobIcon} size={8} />
-          <b>Welcome back to Bob!</b>
+          <Icon className="login__content__logo" url={ShakeIcon} size={8} />
+          <b>Welcome back to Shake Wallet!</b>
         </div>
       </div>
       <div className="login__footer">

@@ -1,4 +1,4 @@
-import {UpdateRecordType} from "@src/contentscripts/bob3";
+import {UpdateRecordType} from "@src/contentscripts/shake";
 
 export const toBIND = (records: UpdateRecordType[]): string[] => {
   const binds = [];

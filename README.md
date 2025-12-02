@@ -1,4 +1,4 @@
-# Bob Extension
+# Shake Wallet
 
 Handshake wallet in the browser 
 
@@ -8,7 +8,7 @@ Handshake wallet in the browser
 
 ### Note about wallet rescan
 
-Bob extension uses the address indexer to make wallet rescan faster and more performant on our hosted infrastructure. However, this will expose all addresses related to your wallet to our backend. We do not keep any logs containing your addresses. If privacy is a concern, you may point RPC to a different `hsd` node (including Bob Desktop!) in settings prior to importing your wallet.
+Shake Wallet uses the address indexer to make wallet rescan faster and more performant on our hosted infrastructure. However, this will expose all addresses related to your wallet to our backend. We do not keep any logs containing your addresses. If privacy is a concern, you may point RPC to a different `hsd` node (including Bob Desktop!) in settings prior to importing your wallet.
 
 ## Development
 
@@ -41,7 +41,7 @@ NETWORK_TYPE=simnet npm run build:dev
 
 Navigate to Handshake names using Chrome's omnibox feature:
 
-1. Type `bob` in Chrome's address bar
+1. Type `shake` in Chrome's address bar
 2. Press `Tab` or `Space`
 3. Enter a Handshake name (e.g., `welcome`, `proofofconcept`, `nb`)
 4. Press `Enter`
@@ -54,16 +54,16 @@ The extension will:
 
 ### Federalist Support
 
-Bob Extension supports [Federalist](https://github.com/kyokan/federalist) - a decentralized web hosting platform using BitTorrent. Handshake names with magnet links in their TXT records will automatically load through the P2P torrent viewer.
+Shake Wallet supports [Federalist](https://github.com/kyokan/federalist) - a decentralized web hosting platform using BitTorrent. Handshake names with magnet links in their TXT records will automatically load through the P2P torrent viewer.
 
-### Injected Bob3 
+### Injected Shake 
 
-Bob Extension injects a Bob3 object to each page, which enables apps to interact with the wallet. 
+Shake Wallet injects a Shake object to each page, which enables apps to interact with the wallet. 
 
-**Connect to Bob extension and get wallet info**
+**Connect to Shake Wallet and get wallet info**
 ```js
-// If Bob is locked, this will open the popup and prompt user to login
-const wallet = await bob3.connect();
+// If Shake Wallet is locked, this will open the popup and prompt user to login
+const wallet = await shake.connect();
 const receiveAddress = await wallet.getAddress();
 const balance = await wallet.getBalance();
 ```
@@ -73,8 +73,8 @@ const balance = await wallet.getBalance();
 Once a name is available, a sendopen transaction starts the opening phase.
 
 ```js
-// Bob3 uses the same
-const wallet = await bob3.connect();
+// Shake uses the same
+const wallet = await shake.connect();
 const tx = await wallet.sendOpen('silverhand');
 ```
 
@@ -91,8 +91,8 @@ Params:
 | lockup  | Required  | amount to lock up to blind your bid (must be greater than bid amount) |
 
 ```js
-// Bob3 uses the same
-const wallet = await bob3.connect();
+// Shake uses the same
+const wallet = await shake.connect();
 const tx = await wallet.sendBid('silverhand', 100, 150);
 ```
 
@@ -107,8 +107,8 @@ Params:
 | name  | Required  | name to reveal bid for |
 
 ```js
-// Bob3 uses the same
-const wallet = await bob3.connect();
+// Shake uses the same
+const wallet = await shake.connect();
 const tx = await wallet.sendReveal('silverhand');
 ```
 
@@ -123,8 +123,8 @@ Params:
 | name  | Required  | name to redeem bid for |
 
 ```js
-// Bob3 uses the same
-const wallet = await bob3.connect();
+// Shake uses the same
+const wallet = await shake.connect();
 const tx = await wallet.sendRedeem('silverhand');
 ```
 
@@ -140,8 +140,8 @@ Params:
 | data  | Required  | [JSON-encoded resource](https://hsd-dev.org/api-docs/#resource-object) |
 
 ```js
-// Bob3 uses the same
-const wallet = await bob3.connect();
+// Shake uses the same
+const wallet = await shake.connect();
 const tx = await wallet.sendUpdate('silverhand', [ 
   {
     type: "NS", 

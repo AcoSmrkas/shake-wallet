@@ -9,7 +9,7 @@ const envPlugin = new webpack.EnvironmentPlugin({
 module.exports = {
   mode: process.env.NODE_ENV || "development",
   entry: {
-    bob3: path.join(__dirname, "src/contentscripts/bob3.ts"),
+    shake: path.join(__dirname, "src/contentscripts/shake.ts"),
     content: path.join(__dirname, "src/contentscripts/index.ts"),
     backgroundPage: path.join(__dirname, "src/background/backgroundPage.ts"),
     popup: path.join(__dirname, "src/ui/popup.tsx"),

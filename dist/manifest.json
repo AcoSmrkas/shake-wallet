@@ -1,14 +1,14 @@
 {
     "manifest_version": 3,
-    "name": "Bob Extension",
+    "name": "Shake Wallet",
     "description": "Chrome Extension for Handshake",
-    "version": "0.6.0",
+    "version": "0.1.0",
     "omnibox": {
-        "keyword": "bob"
+        "keyword": "shake"
     },
     "action": {
         "default_icon": "icon-16.png",
-        "default_title": "Bob Extension",
+        "default_title": "Shake Wallet",
         "default_popup": "popup.html"
     },
     "background": {
@@ -51,7 +51,7 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "js/bob3.js",
+                "js/shake.js",
                 "federalist.html"
             ],
             "matches": [
