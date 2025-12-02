@@ -13,7 +13,6 @@ module.exports = {
     content: path.join(__dirname, "src/contentscripts/index.ts"),
     backgroundPage: path.join(__dirname, "src/background/backgroundPage.ts"),
     popup: path.join(__dirname, "src/ui/popup.tsx"),
-    federalist: path.join(__dirname, "src/ui/federalist.tsx"),
   },
   output: {
     path: path.join(__dirname, "dist/js"),
@@ -108,5 +107,10 @@ module.exports = {
       clearImmediate: ['timers-browserify', 'clearImmediate'],
     })
   ],
-  devtool: "source-map"
+  devtool: "source-map", // Only for dev
+  optimization: {
+    moduleIds: 'deterministic',
+    runtimeChunk: false,
+    splitChunks: false, // Don't split for extension
+  },
 };

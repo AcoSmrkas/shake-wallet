@@ -3,9 +3,6 @@
     "name": "Shake Wallet",
     "description": "Chrome Extension for Handshake",
     "version": "0.1.0",
-    "omnibox": {
-        "keyword": "shake"
-    },
     "action": {
         "default_icon": "icon-16.png",
         "default_title": "Shake Wallet",
@@ -39,7 +36,6 @@
     "permissions": [
         "tabs",
         "notifications",
-        "proxy",
         "storage",
         "unlimitedStorage",
         "alarms"
@@ -51,8 +47,7 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "js/shake.js",
-                "federalist.html"
+                "js/shake.js"
             ],
             "matches": [
                 "http://*/*",

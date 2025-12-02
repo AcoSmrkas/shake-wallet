@@ -2,8 +2,6 @@ import MessageTypes from "@src/util/messageTypes";
 import {AppService} from "@src/util/svc";
 import {MessageAction} from "@src/util/postMessage";
 import {toDollaryDoos} from "@src/util/number";
-import {getMagnetRecord} from "@src/background/resolve";
-import {consume, torrentSVC} from "@src/util/webtorrent";
 import MessageSender = chrome.runtime.MessageSender;
 
 let popupId: number | null = null;
@@ -639,49 +637,6 @@ const controllers: {
     );
   },
 
-  [MessageTypes.CONSUME_TORRENT]: async (app, message) => {
-    const magnetURI = await getMagnetRecord(message.payload);
-
-    if (magnetURI) {
-      setTimeout(() => {
-        consume(magnetURI, message.payload);
-      }, 1000);
-    }
-
-    return;
-  },
-
-  [MessageTypes.CLEAR_TORRENT]: async (app, message) => {
-    torrentSVC.clearTorrent(message.payload);
-  },
-
-  [MessageTypes.CHECK_TORRENT]: async (app, message) => {
-    const torrent = torrentSVC.getTorrent(message.payload).torrent;
-    const magnetURI = torrentSVC.getTorrent(message.payload).uri;
-    const dhtURI = torrentSVC.getTorrent(message.payload).dmt;
-    const error = torrentSVC.getTorrent(message.payload).error;
-    const status = torrentSVC.getTorrent(message.payload).status;
-
-    return {
-      status: status,
-      downloaded: torrent?.downloaded,
-      downloadSpeed: torrent?.downloadSpeed,
-      progress: torrent?.progress,
-      length: torrent?.length,
-      ready: torrent?.ready,
-      uri: magnetURI,
-      numPeers: torrent?.numPeers || 0,
-      error: error,
-      dht: dhtURI
-    };
-  },
-
-  [MessageTypes.OPEN_FEDERALIST]: async (app, message, sender) => {
-    chrome.tabs.update(sender.tab?.id, {
-      url: `http://${message.payload}/`,
-    });
-    return;
-  },
 };
 
 async function openPopup() {

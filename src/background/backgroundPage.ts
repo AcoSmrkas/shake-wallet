@@ -6,8 +6,6 @@ import NodeService from "@src/background/services/node";
 import controllers from "@src/background/controllers";
 import MessageTypes from "@src/util/messageTypes";
 import AnalyticsService from "@src/background/services/analytics";
-import {getMagnetRecord} from "@src/background/resolve";
-import {consume, torrentSVC} from "../util/webtorrent";
 
 (async function () {
   let app: AppService;
@@ -40,27 +38,6 @@ import {consume, torrentSVC} from "../util/webtorrent";
     for (let tab of tabs) {
       await chrome.tabs.sendMessage(tab.id as number, {
         type: MessageTypes.DISCONNECTED,
-      });
-    }
-  });
-
-  chrome.omnibox.onInputEntered.addListener(async (hostname, disposition) => {
-    await waitForStartApp();
-
-    const magnetURI = await getMagnetRecord(hostname);
-    if (magnetURI) {
-      torrentSVC.addTorrentError(hostname, '');
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      chrome.tabs.update(tab.id, {
-        url: chrome.runtime.getURL('federalist.html') + '?h=' + hostname,
-      });
-      setTimeout(() => {
-        consume(magnetURI, hostname);
-      }, 1000);
-    } else {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      await chrome.tabs.update(tab.id, {
-        url: 'http://' + hostname + '/',
       });
     }
   });

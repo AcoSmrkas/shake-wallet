@@ -37,24 +37,7 @@ NETWORK_TYPE=simnet npm run build:dev
 
 **Note**: The extension now uses Manifest V3 and runs as a service worker. After building, load the extension from the `dist/` directory in Chrome via `chrome://extensions` (enable Developer Mode).
 
-## Omnibox Navigation
-
-Navigate to Handshake names using Chrome's omnibox feature:
-
-1. Type `shake` in Chrome's address bar
-2. Press `Tab` or `Space`
-3. Enter a Handshake name (e.g., `welcome`, `proofofconcept`, `nb`)
-4. Press `Enter`
-
-The extension will:
-- Check if the name has a magnet/torrent record (Federalist site) and load the P2P content viewer
-- Otherwise, navigate to `http://<handshake-name>/`
-
 **Note**: For regular HTTP navigation to work, you need a local Handshake resolver (like [hdns](https://github.com/handshake-org/hdns) or [hnsd](https://github.com/handshake-org/hnsd)) or use a DNS provider that supports Handshake names.
-
-### Federalist Support
-
-Shake Wallet supports [Federalist](https://github.com/kyokan/federalist) - a decentralized web hosting platform using BitTorrent. Handshake names with magnet links in their TXT records will automatically load through the P2P torrent viewer.
 
 ### Injected Shake 
 
