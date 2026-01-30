@@ -151,6 +151,41 @@ async function sendUpdate(name: string, records: UpdateRecordType[]) {
 }
 
 /**
+ * Send a locked name UPDATE transaction
+ * @param name - name to update (must be at the lock address)
+ * @param lockScriptHex - raw lock script in hex
+ * @param resourceHex - encoded resource data in hex
+ * @param recipientAddress - optional address to send HNS to
+ * @param recipientAmount - optional amount (in dollarydoos) to send
+ */
+async function sendLockedUpdate(opts: {
+  name: string;
+  lockScriptHex: string;
+  resourceHex: string;
+  recipientAddress?: string;
+  recipientAmount?: number;
+  rate?: number;
+}) {
+  await assertunLocked();
+  return post({
+    type: MessageTypes.SEND_LOCKED_UPDATE,
+    payload: opts,
+  });
+}
+
+/**
+ * Sign a pre-built transaction JSON — wallet signs only the inputs it owns
+ * @param txJSON - full MTX JSON object
+ */
+async function sendTxFromJson(txJSON: any) {
+  await assertunLocked();
+  return post({
+    type: MessageTypes.SEND_TX_FROM_JSON,
+    payload: txJSON,
+  });
+}
+
+/**
  * Event listener for when wallet is disconnected. Only invoked once.
  * @param callback - invoke when wallet is locked
  */
@@ -284,6 +319,8 @@ const wallet = {
   createReveal,
   send,
   sendCustomTx,
+  sendLockedUpdate,
+  sendTxFromJson,
   sendOpen,
   sendBid,
   sendReveal,

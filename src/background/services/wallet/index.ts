@@ -66,6 +66,10 @@ const {Resource} = require("hsd/lib/dns/resource");
 
 const {Device} = USB;
 const blake2b = require("bcrypto/lib/blake2b");
+const sha3 = require("bcrypto/lib/sha3");
+const Script = require("hsd/lib/script/script");
+const Witness = require("hsd/lib/script/witness");
+const Coin = require("hsd/lib/primitives/coin");
 
 const {types, typesByVal} = rules;
 const networkType = process.env.NETWORK_TYPE || "main";
@@ -1242,6 +1246,93 @@ class WalletService extends GenericService {
     return createdTx.toJSON();
   };
 
+
+  createLockedUpdate = async (opts: {
+    name: string;
+    lockScriptHex: string;
+    resourceHex: string;
+    recipientAddress?: string;
+    recipientAmount?: number;
+    rate?: number;
+  }) => {
+    const {name, lockScriptHex, resourceHex, rate} = opts;
+    const walletId = this.selectedID;
+    const wallet = await this.wdb.get(walletId);
+    const latestBlockNow = await this.exec("node", "getLatestBlock");
+    this.wdb.height = latestBlockNow.height;
+
+    // 1. Derive lock address from script
+    const scriptRaw = Buffer.from(lockScriptHex, 'hex');
+    const scriptHash = sha3.digest(scriptRaw);
+    const lockAddr = Address.fromHash(scriptHash, 0);
+
+    // 2. Fetch name state from node
+    const nameInfo = await this.exec("node", "getNameInfo", name);
+    const info = nameInfo?.result?.info || nameInfo?.info;
+    if (!info) throw new Error(`Name not found: "${name}"`);
+
+    const ownerHash = info.owner.hash;
+    const ownerIndex = info.owner.index;
+
+    // 3. Fetch name coin from node (not wallet — it's at the lock address)
+    const coinJSON = await this.exec("node", "getCoin", ownerHash, ownerIndex);
+    if (!coinJSON) throw new Error(`Could not fetch name coin for "${name}".`);
+    const coin = Coin.fromJSON(coinJSON);
+
+    // 4. Verify the coin is at the lock address
+    const coinAddrStr = coin.address.toString(this.network.type);
+    const lockAddrStr = lockAddr.toString(this.network.type);
+    if (coinAddrStr !== lockAddrStr) {
+      throw new Error(`Name coin is not at lock address. Expected ${lockAddrStr}, got ${coinAddrStr}`);
+    }
+
+    // 5. Build the UPDATE transaction
+    const mtx = new MTX();
+
+    // Input 0: name coin (at lock address)
+    mtx.addCoin(coin);
+
+    // Output 0: name coin back to lock address
+    const output = new Output();
+    output.address = lockAddr;
+    output.value = coin.value;
+    output.covenant.type = types.UPDATE;
+    output.covenant.push(coin.covenant.get(0)); // nameHash
+    output.covenant.push(coin.covenant.get(1)); // height
+    output.covenant.push(Buffer.from(resourceHex, 'hex')); // resource
+    mtx.outputs.push(output);
+
+    // Output 1 (optional): send HNS to recipient
+    if (opts.recipientAddress && opts.recipientAmount) {
+      mtx.addOutput({
+        address: Address.fromString(opts.recipientAddress, this.network.type),
+        value: opts.recipientAmount,
+      });
+    }
+
+    // 6. Fund the tx (wallet adds fee input + change output)
+    await wallet.fund(mtx, {rate: rate || policy.MIN_RELAY});
+
+    // 7. Set lock script witness on input 0 (name coin)
+    //    template() skips inputs that already have a witness set
+    mtx.inputs[0].witness = Witness.fromItems([scriptRaw]);
+
+    // 8. Finalize — sort disabled to preserve input/output order
+    //    template() signs only wallet-owned inputs (fee coin)
+    const createdTx = await wallet.finalize(mtx, {sort: false});
+    return createdTx.toJSON();
+  };
+
+  createTxFromJson = async (txJSON: any) => {
+    const walletId = this.selectedID;
+    const wallet = await this.wdb.get(walletId);
+    const latestBlockNow = await this.exec("node", "getLatestBlock");
+    this.wdb.height = latestBlockNow.height;
+
+    const mtx = MTX.fromJSON(txJSON);
+    await wallet.sign(mtx);
+    return mtx.toJSON();
+  };
 
   createSend = async (txOptions: any) => {
     const walletId = this.selectedID;

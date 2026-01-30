@@ -97,6 +97,24 @@ const controllers: {
 
         await app.exec("wallet", "addTxToQueue", tx);
         break;
+      case 'locked_update':
+        app.exec("analytics", "track", {
+          name: "Shake Locked Update",
+        });
+
+        tx = await app.exec("wallet", "createLockedUpdate", payload);
+
+        await app.exec("wallet", "addTxToQueue", tx);
+        break;
+      case 'tx_from_json':
+        app.exec("analytics", "track", {
+          name: "Shake Tx From JSON",
+        });
+
+        tx = await app.exec("wallet", "createTxFromJson", payload);
+
+        await app.exec("wallet", "addTxToQueue", tx);
+        break;
     }
 
     if (tx) {
@@ -319,6 +337,50 @@ const controllers: {
         }
 
         pendingPopupRequest = { type: 'custom', payload: message.payload, resolve, reject };
+        const popup = await openPopup();
+        closePopupOnAcceptOrReject(app, resolve, reject, popup);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  },
+
+  [MessageTypes.SEND_LOCKED_UPDATE]: async (app, message) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const queue = await app.exec("wallet", "getTxQueue");
+
+        if (queue.length) {
+          return reject(new Error("user has unconfirmed tx."));
+        }
+
+        if (pendingPopupRequest !== null) {
+          return reject(new Error("Another transaction is already pending confirmation."));
+        }
+
+        pendingPopupRequest = { type: 'locked_update', payload: message.payload, resolve, reject };
+        const popup = await openPopup();
+        closePopupOnAcceptOrReject(app, resolve, reject, popup);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  },
+
+  [MessageTypes.SEND_TX_FROM_JSON]: async (app, message) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const queue = await app.exec("wallet", "getTxQueue");
+
+        if (queue.length) {
+          return reject(new Error("user has unconfirmed tx."));
+        }
+
+        if (pendingPopupRequest !== null) {
+          return reject(new Error("Another transaction is already pending confirmation."));
+        }
+
+        pendingPopupRequest = { type: 'tx_from_json', payload: message.payload, resolve, reject };
         const popup = await openPopup();
         closePopupOnAcceptOrReject(app, resolve, reject, popup);
       } catch (e) {

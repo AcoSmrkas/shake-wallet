@@ -87,6 +87,8 @@ enum MessageTypes {
   SEND_TX = "send_tx",
   SEND_CUSTOM_TX = "send_custom_tx",
   SEND_UPDATE = "send_update",
+  SEND_LOCKED_UPDATE = "send_locked_update",
+  SEND_TX_FROM_JSON = "send_tx_from_json",
 
   POPUP_LOADED = "popup_loaded",
 }
