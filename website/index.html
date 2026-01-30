@@ -1,65 +1,200 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shake Wallet</title>
-    <link href="https://fonts.googleapis.com/css?family=Anonymous+Pro&#x007C;Roboto:400,700" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
-    
-  <style>
-    html,body{margin:0;padding:0}body{font-family:"Open Sans", sans-serif;cursor:default}.hero__image{height:2rem}.white-text{color:white}.highlights{text-align:left;width:22rem;margin:0 auto;padding:0}.highlights li{list-style-type:none;font-size:1rem;font-weight:600;margin:1rem 0;color:#333333}.highlights li:before{content:'\2705';margin-left:1rem;margin-right:2rem}.section-container{margin:0 auto;max-width:960px}.hero{min-height:75vh;color:#1a1a1a;background:#fafafa;padding:72px 0}.hero h1{font-family:"Roboto", sans-serif;font-weight:700;font-size:60px;margin-top:0}.hero p{font-size:24px;line-height:1.2;margin-bottom:48px}.hero__grid{display:flex}.hero__logo{width:150px}.hero__center{align-items:center;justify-content:center}.hero__left{flex:1 1 60%}.hero__right{flex:0 0 40%;text-align:center}.hero__social-link{margin:1rem}.hero__buttons__wrapper{margin:3rem 0;display:flex;align-items:center;justify-content:center}.hero__buttons a{color:#1a1a1a;text-decoration:none;justify-content:center;display:flex}.hero__buttons span{background:#e2583f;display:block;padding:12px 10px;text-align:center;border-radius:3px}.hero__buttons__vernum{margin-left:3.5%}.hero__buttons__link{margin-left:2.5%}.hero__buttons .outline span{background:transparent;border:1px solid #e2583f;color:#e2583f}.download-cta{border:3px solid #e2583f;padding:12px 0;width:200px;margin:0 auto;display:block;border-radius:3px;color:#e2583f;text-decoration:none;transition:background 100ms ease-in-out}.download-cta:hover{background:#e2583f;text-decoration:underline;color:white}.shake-github-link{text-decoration:underline;color:#646464}.shake{position:static;bottom:0;padding-top:72px;background:#f0f0f0}.shake__centered{margin-top:5%;text-align:center;margin-bottom:72px}.shake__centered h3{font-weight:300;font-size:1.3125rem;color:#646464;max-width:30rem;margin:0 auto 24px}.shake__benefits{display:flex;align-items:center;padding-bottom:72px}.shake__benefit-copy{line-height:1.2}.shake__benefit-copy p{margin-bottom:0}.shake__screenshot{flex:1 0 60%;text-align:center}.shake__screenshot img{max-width:100%;border-radius:3px;box-shadow:0 1px 16px rgba(0,0,0,0.15)}.shake__screenshot .shake__bidding{width:353px !important}.shake__screenshot+.shake__benefit-copy{margin-left:48px}.shake__benefit-copy+.shake__screenshot{margin-left:48px;text-align:right}.shake__additional-features{display:flex;padding-bottom:72px}.shake__feature{width:33%;text-align:center;margin-right:24px}.shake__feature:last-child{margin-right:0}.shake__feature img{width:50%}@media (max-width: 769px){.shake__centered h3{font-size:1.125rem}.shake__benefits .shake__screenshot{margin:0}.shake__benefits:nth-of-type(1){flex-flow:column-reverse nowrap}.shake__benefits:nth-of-type(1) .shake__benefit-copy{margin:0}.shake__benefits:nth-of-type(2){flex-flow:column nowrap}.shake__benefits:nth-of-type(2) .shake__benefit-copy{margin:0}.shake__benefits:nth-of-type(3){flex-flow:column-reverse nowrap}.shake__benefits:nth-of-type(3) .shake__benefit-copy{margin:0}.hero__image{height:1.75rem}}
-
-    </style>
-
-    <script src="https://kit.fontawesome.com/0be24772e2.js" crossorigin="anonymous"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel='icon' type='image/x-icon' href='/assets/images/shake-logo-circle.svg' />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: "Inter", sans-serif;
+            background: #0d0d0d;
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 2rem;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(226, 88, 63, 0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero__content {
+            max-width: 560px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            width: 96px;
+            height: 96px;
+            margin: 0 auto 2rem;
+            filter: drop-shadow(0 0 24px rgba(226, 88, 63, 0.2));
+        }
+
+        .brand {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .tagline {
+            font-size: 1.125rem;
+            color: #888;
+            line-height: 1.6;
+            margin-bottom: 2.5rem;
+            font-weight: 400;
+        }
+
+        .cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.75rem;
+            background: #e2583f;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            transition: background 150ms ease, transform 150ms ease;
+        }
+
+        .cta:hover {
+            background: #c94a34;
+            transform: translateY(-1px);
+        }
+
+        .cta svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .features {
+            list-style: none;
+            margin-top: 3rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .features li {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9375rem;
+            color: #aaa;
+        }
+
+        .features li::before {
+            content: '';
+            flex-shrink: 0;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #e2583f;
+        }
+
+        .footer-links {
+            margin-top: 3rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .footer-links a {
+            color: #555;
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 150ms ease;
+        }
+
+        .footer-links a:hover {
+            color: #e2583f;
+        }
+
+        @media (max-width: 480px) {
+            .brand { font-size: 1.75rem; }
+            .tagline { font-size: 1rem; }
+            .logo { width: 72px; height: 72px; }
+            .features { align-items: flex-start; padding-left: 1rem; }
+        }
+    </style>
 </head>
 <body>
-<div class="container">
     <section class="hero">
-        <div class="section-container">
-            <div class="hero__grid hero__center">
-                <img class="hero__image" src="/assets/images/logowithtext.svg" alt="Shake Wallet" class="hero__logo" />
-            </div>
-            <div class="shake__centered">
-              <h3>
-                Chrome Extension for DNS management and name auctions on Handshake
-              </h3>
-              <div class="hero__buttons">
-                <div class="hero__buttons__wrapper">
-                  <a class="hero__buttons__red-wrapper" href="https://chrome.google.com/webstore/detail/shake-extension/ogcmjchbmdichlfelhmceldndgmgpcem" style="margin-left: 16px;">
-                    <span class="white-text" style="background-color: #1a73e8;">Install Chrome Extension (Beta)</span>
-                  </a>
-                </div>
-              </div>
-              <ul class="highlights">
-                <li>Search and bid on names</li>
-                <li>Manage domains and DNS records</li>
-                <li>Send, Receive, and Claim your HNS</li>
-              </ul>
-            </div>
-          <div class="hero__buttons__wrapper">
-            <a class="hero__social-link" href="https://github.com/AcoSmrkas/shake-wallet">
-              <div class="shake-github-link">
-                <i class="fab fa-github"></i>
-              </div>
+        <div class="hero__content">
+            <svg class="logo" width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="metal" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#d9d9d9"/>
+                        <stop offset="40%" stop-color="#ffffff"/>
+                        <stop offset="60%" stop-color="#b3b3b3"/>
+                        <stop offset="100%" stop-color="#e6e6e6"/>
+                    </linearGradient>
+                </defs>
+                <style>
+                    @keyframes shake {
+                        0%   { transform: translate(0, 0) rotate(0deg); }
+                        20%  { transform: translate(-2px, 0) rotate(-3deg); }
+                        40%  { transform: translate(2px, 0) rotate(3deg); }
+                        60%  { transform: translate(-2px, 0) rotate(-2deg); }
+                        80%  { transform: translate(2px, 0) rotate(2deg); }
+                        100% { transform: translate(0, 0) rotate(0deg); }
+                    }
+                    .shaker { animation: shake 0.5s infinite ease-in-out; transform-origin: 50% 60%; }
+                </style>
+                <g class="shaker">
+                    <path d="M45 15h38l4 12H41l4-12z" fill="url(#metal)" stroke="#666" stroke-width="2"/>
+                    <rect x="41" y="27" width="46" height="18" rx="3" fill="url(#metal)" stroke="#666" stroke-width="2"/>
+                    <path d="M32 45h64l-10 62c-1 6-5 10-10 10H52c-5 0-9-4-10-10L32 45z" fill="url(#metal)" stroke="#666" stroke-width="2"/>
+                    <path d="M48 50c-5 30 0 50 8 60" stroke="white" stroke-width="3" opacity="0.3"/>
+                </g>
+            </svg>
+
+
+            <h1 class="brand">Shake Wallet</h1>
+            <p class="tagline">A Handshake wallet Chrome extension for transferring HNS and managing names.</p>
+
+            <a class="cta" href="https://chromewebstore.google.com/detail/shake-wallet/mjjjcbjgeiigcajppjbceofojddmomla">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                Install Extension (Beta)
             </a>
-          </div>
+
+            <ul class="features">
+                <li>Search and bid on names</li>
+                <li>Manage domains</li>
+                <li>Send, receive, and claim your HNS</li>
+            </ul>
+
+            <div class="footer-links">
+                <a href="https://github.com/AcoSmrkas/shake-wallet">GitHub</a>
+            </div>
         </div>
     </section>
-    <section class="shake">
-        <div class="section-container">
-
-        </div>
-    </section>
-
-
-
-
-
-
-</div>
 </body>
 </html>

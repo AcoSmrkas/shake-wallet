@@ -34,8 +34,6 @@
         "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
     },
     "permissions": [
-        "tabs",
-        "notifications",
         "storage",
         "unlimitedStorage",
         "alarms"
