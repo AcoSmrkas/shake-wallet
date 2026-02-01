@@ -1272,8 +1272,16 @@ class WalletService extends GenericService {
     const ownerIndex = info.owner.index;
 
     // 3. Fetch name coin from node (not wallet — it's at the lock address)
-    const coinJSON = await this.exec("node", "getCoin", ownerHash, ownerIndex);
+    const coinTx = await this.exec("node", "getTXByHash", ownerHash);
+    let coinJSON = coinTx.outputs[ownerIndex];
     if (!coinJSON) throw new Error(`Could not fetch name coin for "${name}".`);
+
+    coinJSON.version = coinTx.version;
+    coinJSON.height = coinTx.height;
+    coinJSON.coinbase = false;
+    coinJSON.hash = coinTx.hash;
+    coinJSON.index = 0;
+    
     const coin = Coin.fromJSON(coinJSON);
 
     // 4. Verify the coin is at the lock address
@@ -1306,7 +1314,7 @@ class WalletService extends GenericService {
     }
 
     // 6. Fund the fee MTX (no pre-existing inputs — clean slate)
-    await wallet.fill(feeMtx, {rate: rate || policy.MIN_RELAY});
+    await wallet.fill(feeMtx);
     const fundedFee = await wallet.finalize(feeMtx, {sort: false});
 
     // 7. Assemble the final MTX
