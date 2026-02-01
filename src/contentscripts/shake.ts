@@ -146,7 +146,7 @@ async function sendUpdate(name: string, records: UpdateRecordType[]) {
  * @param recipientAddress - optional address to send HNS to
  * @param recipientAmount - optional amount (in dollarydoos) to send
  */
-async function sendLockedUpdate(opts: {
+async function sendRosenBridgeLock(opts: {
   name: string;
   lockScriptHex: string;
   resourceHex: string;
@@ -156,7 +156,7 @@ async function sendLockedUpdate(opts: {
 }) {
   await assertunLocked();
   return post({
-    type: MessageTypes.SEND_LOCKED_UPDATE,
+    type: MessageTypes.SEND_ROSEN_BRIDGE_LOCK,
     payload: opts,
   });
 }
@@ -294,7 +294,7 @@ const wallet = {
   getAddress,
   createReveal,
   send,
-  sendLockedUpdate,
+  sendRosenBridgeLock,
   sendOpen,
   sendBid,
   sendReveal,

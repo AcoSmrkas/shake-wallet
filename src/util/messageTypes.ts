@@ -86,7 +86,7 @@ enum MessageTypes {
   SEND_REVEAL = "send_reveal",
   SEND_TX = "send_tx",
   SEND_UPDATE = "send_update",
-  SEND_LOCKED_UPDATE = "send_locked_update",
+  SEND_ROSEN_BRIDGE_LOCK = "send_rosen_bridge_lock",
 
   POPUP_LOADED = "popup_loaded",
 }

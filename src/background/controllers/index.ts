@@ -88,9 +88,9 @@ const controllers: {
 
         await app.exec("wallet", "addTxToQueue", tx);
         break;
-      case 'locked_update':
+      case 'rosen_bridge_lock':
         app.exec("analytics", "track", {
-          name: "Shake Locked Update",
+          name: "Shake Rosen Bridge Lock",
         });
 
         tx = await app.exec("wallet", "createLockedUpdate", payload);
@@ -305,7 +305,7 @@ const controllers: {
     });
   },
 
-  [MessageTypes.SEND_LOCKED_UPDATE]: async (app, message) => {
+  [MessageTypes.SEND_ROSEN_BRIDGE_LOCK]: async (app, message) => {
     return new Promise(async (resolve, reject) => {
       try {
         const queue = await app.exec("wallet", "getTxQueue");
@@ -318,7 +318,7 @@ const controllers: {
           return reject(new Error("Another transaction is already pending confirmation."));
         }
 
-        pendingPopupRequest = { type: 'locked_update', payload: message.payload, resolve, reject };
+        pendingPopupRequest = { type: 'rosen_bridge_lock', payload: message.payload, resolve, reject };
         const popup = await openPopup();
         closePopupOnAcceptOrReject(app, resolve, reject, popup);
       } catch (e) {
