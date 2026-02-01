@@ -1286,11 +1286,42 @@ class WalletService extends GenericService {
       throw new Error(`Name coin is not at lock address. Expected ${lockAddrStr}, got ${coinAddrStr}`);
     }
 
-    // 5. Build the UPDATE transaction
+    // 5. Build a fee-only MTX, let the wallet fund it, then merge
+    const feeMtx = new MTX();
+
+    // Add outputs the wallet needs to fund
+    if (opts.recipientAddress && opts.recipientAmount) {
+      feeMtx.addOutput({
+        address: Address.fromString(opts.recipientAddress, this.network.type),
+        value: opts.recipientAmount,
+      });
+    }
+
+    // We need at least one output for fill() to work.
+    // Add a dummy output we'll replace — the fee calculation needs something.
+    // Use subtractFee on a small self-payment if no recipient.
+    if (feeMtx.outputs.length === 0) {
+      const changeAddr = await wallet.changeAddress(0);
+      feeMtx.addOutput(new Output({
+        address: changeAddr,
+        value: 0,
+      }));
+    }
+
+    // 6. Fund the fee MTX (no pre-existing inputs — clean slate)
+    await wallet.fill(feeMtx, {rate: rate || policy.MIN_RELAY});
+    const fundedFee = await wallet.finalize(feeMtx, {sort: false});
+
+    // 7. Assemble the final MTX
     const mtx = new MTX();
 
     // Input 0: name coin (at lock address)
     mtx.addCoin(coin);
+
+    // Copy wallet inputs (fee coins)
+    for (const input of fundedFee.inputs) {
+      mtx.inputs.push(input);
+    }
 
     // Output 0: name coin back to lock address
     const output = new Output();
@@ -1302,25 +1333,22 @@ class WalletService extends GenericService {
     output.covenant.push(Buffer.from(resourceHex, 'hex')); // resource
     mtx.outputs.push(output);
 
-    // Output 1 (optional): send HNS to recipient
-    if (opts.recipientAddress && opts.recipientAmount) {
-      mtx.addOutput({
-        address: Address.fromString(opts.recipientAddress, this.network.type),
-        value: opts.recipientAmount,
-      });
+    // Copy wallet outputs (recipient + change)
+    for (const out of fundedFee.outputs) {
+      // Skip the dummy 0-value output if no recipient
+      if (out.value === 0 && !opts.recipientAddress) continue;
+      mtx.outputs.push(out);
     }
 
-    // 6. Fund the tx (wallet adds fee input + change output)
-    await wallet.fund(mtx, {rate: rate || policy.MIN_RELAY});
+    // 8. Tag the JSON with lock script so acceptTx can set the witness and sign
+    const json = mtx.toJSON();
+    json._lockScriptHex = lockScriptHex;
+    json._lockInputIndex = 0;
 
-    // 7. Set lock script witness on input 0 (name coin)
-    //    template() skips inputs that already have a witness set
-    mtx.inputs[0].witness = Witness.fromItems([scriptRaw]);
+    // Include the external coin data so acceptTx can reconstruct the view
+    json._externalCoin = coinJSON;
 
-    // 8. Finalize — sort disabled to preserve input/output order
-    //    template() signs only wallet-owned inputs (fee coin)
-    const createdTx = await wallet.finalize(mtx, {sort: false});
-    return createdTx.toJSON();
+    return json;
   };
 
   createTxFromJson = async (txJSON: any) => {
@@ -1446,9 +1474,30 @@ class WalletService extends GenericService {
         const latestBlockNow = await this.exec("node", "getLatestBlock");
         this.wdb.height = latestBlockNow.height;
         const mtx = MTX.fromJSON(opts.txJSON);
-        const tx = await wallet.sendMTX(mtx, this.passphrase);
-        await this.exec("node", "sendRawTransaction", tx.toHex());
-        returnValue = tx.getJSON(this.network);
+
+        // Handle locked name transactions: set lock script witness
+        // and re-add external coin to view before signing
+        if (opts.txJSON._lockScriptHex != null && opts.txJSON._lockInputIndex != null) {
+          const lockIdx = opts.txJSON._lockInputIndex;
+          const lockRaw = Buffer.from(opts.txJSON._lockScriptHex, 'hex');
+          mtx.inputs[lockIdx].witness = Witness.fromItems([lockRaw]);
+
+          // Add the external coin to view for isSigned() check
+          if (opts.txJSON._externalCoin) {
+            mtx.view.addCoin(Coin.fromJSON(opts.txJSON._externalCoin));
+          }
+
+          // Sign only wallet-owned inputs (lock input already has witness)
+          await wallet.sign(mtx, this.passphrase);
+
+          const tx = mtx.toTX();
+          await this.exec("node", "sendRawTransaction", tx.toHex());
+          returnValue = tx.getJSON(this.network);
+        } else {
+          const tx = await wallet.sendMTX(mtx, this.passphrase);
+          await this.exec("node", "sendRawTransaction", tx.toHex());
+          returnValue = tx.getJSON(this.network);
+        }
       }
 
       await this.removeTxFromQueue(opts.txJSON);

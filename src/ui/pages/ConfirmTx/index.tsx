@@ -386,8 +386,16 @@ function ConfirmContent(props: {hash: string}): ReactElement {
       );
     case "REGISTER":
     case "UPDATE":
-      const {records} = Resource.fromRaw(Buffer.from(raw, "hex")).toJSON();
-      const bindFormattedRecords = toBIND(records);
+      let records: any[] = [];
+      let bindFormattedRecords: string[] = [];
+      try {
+        const res = Resource.fromRaw(Buffer.from(raw, "hex")).toJSON();
+        records = res.records;
+        bindFormattedRecords = toBIND(records);
+      } catch (e) {
+        // Custom/raw resource data — not a standard HSD resource
+        bindFormattedRecords = [`(raw hex: ${raw.slice(0, 64)}${raw.length > 64 ? '...' : ''})`];
+      }
       return (
         <>
           <Input label="TLD" value={name} spellCheck={false} disabled />

@@ -11,20 +11,20 @@ export type Explorer = {
 
 export const EXPLORERS: Explorer[] = [
   {
-    id: 'hns-dev',
-    label: 'hns.dev',
-    tx: 'https://explorer.hns.dev/tx/%s',
-    name: 'https://explorer.hns.dev/name/%s',
-    address: 'https://explorer.hns.dev/address/%s',
-    block: 'https://explorer.hns.dev/block/%s',
-  },
-  {
     id: 'shakeshift',
     label: 'ShakeShift',
     tx: 'https://shakeshift.com/transaction/%s',
     name: 'https://shakeshift.com/name/%s',
     address: 'https://shakeshift.com/address/%s',
     block: 'https://shakeshift.com/block/%s',
+  },
+  {
+    id: 'hns-dev',
+    label: 'hns.dev',
+    tx: 'https://explorer.hns.dev/tx/%s',
+    name: 'https://explorer.hns.dev/name/%s',
+    address: 'https://explorer.hns.dev/address/%s',
+    block: 'https://explorer.hns.dev/block/%s',
   },
   {
     id: 'hns-fans',

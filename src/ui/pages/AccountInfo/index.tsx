@@ -133,19 +133,6 @@ export default function ReceiveTx() {
 
       {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
 
-      {/* <RegularViewFooter>
-        <a
-          href={`https://e.hnsfans.com/address/${address}`}
-          target="_blank"
-        >
-          <Button
-          // disabled={isLoading}
-          // loading={isLoading}
-          >
-            Block Explorer
-          </Button>
-        </a>
-      </RegularViewFooter> */}
     </RegularView>
   );
 }

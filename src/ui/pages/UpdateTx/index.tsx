@@ -632,7 +632,8 @@ function UpdateRegister(props: Props): ReactElement {
   const pendingTx = useQueuedTXByHash(props.hash);
   const nameHash = getTXNameHash(pendingTx);
   const raw = getTXRecords(pendingTx);
-  const {records} = Resource.fromRaw(Buffer.from(raw, 'hex')).toJSON();
+  let records: any[] = [];
+  try { records = Resource.fromRaw(Buffer.from(raw, 'hex')).toJSON().records; } catch (e) {}
   const [name, setName] = useState('');
   const [fee, setFee] = useState<number>(FEE_TYPE_TO_OPT.standard);
   const [feeType, _setFeeType] = useState<'slow' | 'standard' | 'fast'>("standard");
@@ -737,7 +738,8 @@ function UpdateUpdate(props: Props): ReactElement {
   const pendingTx = useQueuedTXByHash(props.hash);
   const nameHash = getTXNameHash(pendingTx);
   const raw = getTXRecords(pendingTx);
-  const {records} = Resource.fromRaw(Buffer.from(raw, 'hex')).toJSON();
+  let records: any[] = [];
+  try { records = Resource.fromRaw(Buffer.from(raw, 'hex')).toJSON().records; } catch (e) {}
   const [name, setName] = useState('');
   const [fee, setFee] = useState<number>(FEE_TYPE_TO_OPT.standard);
   const [feeType, _setFeeType] = useState<'slow' | 'standard' | 'fast'>("standard");
