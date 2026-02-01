@@ -41,9 +41,7 @@ import {setInfo} from "@src/ui/ducks/node";
 import nodeService from "../node";
 import crypto from "crypto";
 const Mnemonic = require("hsd/lib/hd/mnemonic");
-const HD = require("hsd/lib/hd");
 const WalletDB = require("hsd/lib/wallet/walletdb");
-const Wallet = require("hsd/lib/wallet/wallet");
 const Network = require("hsd/lib/protocol/network");
 const Covenant = require("hsd/lib/primitives/covenant");
 const rules = require("hsd/lib/covenants/rules");
@@ -67,7 +65,6 @@ const {Resource} = require("hsd/lib/dns/resource");
 const {Device} = USB;
 const blake2b = require("bcrypto/lib/blake2b");
 const sha3 = require("bcrypto/lib/sha3");
-const Script = require("hsd/lib/script/script");
 const Witness = require("hsd/lib/script/witness");
 const Coin = require("hsd/lib/primitives/coin");
 
