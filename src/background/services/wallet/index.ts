@@ -1480,14 +1480,26 @@ class WalletService extends GenericService {
         if (opts.txJSON._lockScriptHex != null && opts.txJSON._lockInputIndex != null) {
           const lockIdx = opts.txJSON._lockInputIndex;
           const lockRaw = Buffer.from(opts.txJSON._lockScriptHex, 'hex');
-          mtx.inputs[lockIdx].witness = Witness.fromItems([lockRaw]);
 
-          // Add the external coin to view for isSigned() check
+          // Add the external coin to view
           if (opts.txJSON._externalCoin) {
             mtx.view.addCoin(Coin.fromJSON(opts.txJSON._externalCoin));
           }
 
-          // Sign only wallet-owned inputs (lock input already has witness)
+          // Add wallet-owned coins to view
+          for (let i = 0; i < mtx.inputs.length; i++) {
+            if (i === lockIdx) continue;
+            const {prevout} = mtx.inputs[i];
+            const walletCoin = await wallet.getCoin(prevout.hash, prevout.index);
+            if (walletCoin) {
+              mtx.view.addCoin(walletCoin);
+            }
+          }
+
+          // Set lock script witness
+          mtx.inputs[lockIdx].witness = Witness.fromItems([lockRaw]);
+
+          // Sign wallet-owned inputs (lock input already has witness)
           await wallet.sign(mtx, this.passphrase);
 
           const tx = mtx.toTX();
