@@ -1202,48 +1202,6 @@ class WalletService extends GenericService {
     return createdTx.toJSON();
   };
 
-  createCustomTx = async (txOptions: any) => {
-    const walletId = this.selectedID;
-    const wallet = await this.wdb.get(walletId);
-    const latestBlockNow = await this.exec("node", "getLatestBlock");
-    this.wdb.height = latestBlockNow.height;
-    const outputs = txOptions.outputs;
-    const mtx = new MTX(txOptions);
-
-  
-    const mtxOutputs = [];
-    for (const obj of outputs) {
-      let output;
-      if (obj.data) {
-        const dataBuffer = Buffer.from(obj.data, 'hex');
-        const nulldataAddress = Address.fromNulldata(dataBuffer);
-        output = new Output({ address: nulldataAddress, value: 0 });
-      } else {
-        output = new Output(obj);
-      }
-
-      const addr = output.getAddress();
-      if (output.isDust(txOptions.rate || policy.MIN_RELAY)) {
-        throw new Error('Output is dust.');
-      }
-      if (output.value > 0) {
-        if (!addr || addr.isNull()) {
-          throw new Error('Cannot send to null or unknown address.');
-        }
-      }
-
-      mtxOutputs.push(output);
-    }
-
-    mtx.outputs = mtxOutputs;
-
-    await wallet.fund(mtx, txOptions);
-
-    const createdTx = await wallet.finalize(mtx, txOptions);
-    return createdTx.toJSON();
-  };
-
-
   createLockedUpdate = async (opts: {
     name: string;
     lockScriptHex: string;
@@ -1280,7 +1238,7 @@ class WalletService extends GenericService {
     coinJSON.height = coinTx.height;
     coinJSON.coinbase = false;
     coinJSON.hash = coinTx.hash;
-    coinJSON.index = 0;
+    coinJSON.index = ownerIndex;
     
     const coin = Coin.fromJSON(coinJSON);
 
@@ -1354,17 +1312,6 @@ class WalletService extends GenericService {
     json._externalCoin = coinJSON;
 
     return json;
-  };
-
-  createTxFromJson = async (txJSON: any) => {
-    const walletId = this.selectedID;
-    const wallet = await this.wdb.get(walletId);
-    const latestBlockNow = await this.exec("node", "getLatestBlock");
-    this.wdb.height = latestBlockNow.height;
-
-    const mtx = MTX.fromJSON(txJSON);
-    await wallet.sign(mtx);
-    return mtx.toJSON();
   };
 
   createSend = async (txOptions: any) => {

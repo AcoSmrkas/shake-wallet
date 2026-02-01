@@ -54,18 +54,6 @@ async function send(address: string, amount: number) {
 }
 
 /**
- * Create a custom transaction with multiple outputs
- * @param options - Transaction options with outputs array
- */
-async function sendCustomTx(options: { outputs: { address?: string; value: number; data?: string }[], rate?: number, subtractFee?: boolean }) {
-  await assertunLocked();
-  return post({
-    type: MessageTypes.SEND_CUSTOM_TX,
-    payload: options,
-  });
-}
-
-/**
  * Send open
  * @param name - name to open bidding on
  */
@@ -170,18 +158,6 @@ async function sendLockedUpdate(opts: {
   return post({
     type: MessageTypes.SEND_LOCKED_UPDATE,
     payload: opts,
-  });
-}
-
-/**
- * Sign a pre-built transaction JSON — wallet signs only the inputs it owns
- * @param txJSON - full MTX JSON object
- */
-async function sendTxFromJson(txJSON: any) {
-  await assertunLocked();
-  return post({
-    type: MessageTypes.SEND_TX_FROM_JSON,
-    payload: txJSON,
   });
 }
 
@@ -318,9 +294,7 @@ const wallet = {
   getAddress,
   createReveal,
   send,
-  sendCustomTx,
   sendLockedUpdate,
-  sendTxFromJson,
   sendOpen,
   sendBid,
   sendReveal,
