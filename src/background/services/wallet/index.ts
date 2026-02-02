@@ -1202,15 +1202,14 @@ class WalletService extends GenericService {
     return createdTx.toJSON();
   };
 
-  createLockedUpdate = async (opts: {
+  createRosenBridgeLock = async (opts: {
     name: string;
     lockScriptHex: string;
     resourceHex: string;
-    recipientAddress?: string;
-    recipientAmount?: number;
-    rate?: number;
+    recipientAddress: string;
+    recipientAmount: number;
   }) => {
-    const {name, lockScriptHex, resourceHex, rate} = opts;
+    const {name, lockScriptHex, resourceHex} = opts;
     const walletId = this.selectedID;
     const wallet = await this.wdb.get(walletId);
     const latestBlockNow = await this.exec("node", "getLatestBlock");
@@ -1253,23 +1252,10 @@ class WalletService extends GenericService {
     const feeMtx = new MTX();
 
     // Add outputs the wallet needs to fund
-    if (opts.recipientAddress && opts.recipientAmount) {
-      feeMtx.addOutput({
-        address: Address.fromString(opts.recipientAddress, this.network.type),
-        value: opts.recipientAmount,
-      });
-    }
-
-    // We need at least one output for fill() to work.
-    // Add a dummy output we'll replace — the fee calculation needs something.
-    // Use subtractFee on a small self-payment if no recipient.
-    if (feeMtx.outputs.length === 0) {
-      const changeAddr = await wallet.changeAddress(0);
-      feeMtx.addOutput(new Output({
-        address: changeAddr,
-        value: 0,
-      }));
-    }
+    feeMtx.addOutput({
+      address: Address.fromString(opts.recipientAddress, this.network.type),
+      value: opts.recipientAmount,
+    });
 
     // 6. Fund the fee MTX (no pre-existing inputs — clean slate)
     await wallet.fill(feeMtx);
@@ -1303,10 +1289,26 @@ class WalletService extends GenericService {
       mtx.outputs.push(out);
     }
 
+    // Add the external coin to view
+    if (coinJSON) {
+      mtx.view.addCoin(Coin.fromJSON(coinJSON));
+    }
+
+    // Add wallet-owned coins to view
+    const lockIdx = 0;
+    for (let i = 0; i < mtx.inputs.length; i++) {
+      if (i === lockIdx) continue;
+      const {prevout} = mtx.inputs[i];
+      const walletCoin = await wallet.getCoin(prevout.hash, prevout.index);
+      if (walletCoin) {
+        mtx.view.addCoin(walletCoin);
+      }
+    }
+
     // 8. Tag the JSON with lock script so acceptTx can set the witness and sign
     const json = mtx.toJSON();
     json._lockScriptHex = lockScriptHex;
-    json._lockInputIndex = 0;
+    json._lockInputIndex = lockIdx;
 
     // Include the external coin data so acceptTx can reconstruct the view
     json._externalCoin = coinJSON;
@@ -1432,21 +1434,6 @@ class WalletService extends GenericService {
         if (opts.txJSON._lockScriptHex != null && opts.txJSON._lockInputIndex != null) {
           const lockIdx = opts.txJSON._lockInputIndex;
           const lockRaw = Buffer.from(opts.txJSON._lockScriptHex, 'hex');
-
-          // Add the external coin to view
-          if (opts.txJSON._externalCoin) {
-            mtx.view.addCoin(Coin.fromJSON(opts.txJSON._externalCoin));
-          }
-
-          // Add wallet-owned coins to view
-          for (let i = 0; i < mtx.inputs.length; i++) {
-            if (i === lockIdx) continue;
-            const {prevout} = mtx.inputs[i];
-            const walletCoin = await wallet.getCoin(prevout.hash, prevout.index);
-            if (walletCoin) {
-              mtx.view.addCoin(walletCoin);
-            }
-          }
 
           // Set lock script witness
           mtx.inputs[lockIdx].witness = Witness.fromItems([lockRaw]);

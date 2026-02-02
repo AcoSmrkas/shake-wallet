@@ -90,10 +90,10 @@ const controllers: {
         break;
       case 'rosen_bridge_lock':
         app.exec("analytics", "track", {
-          name: "Shake Rosen Bridge Lock",
+          name: "Shake Rosen Bridge Send",
         });
 
-        tx = await app.exec("wallet", "createLockedUpdate", payload);
+        tx = await app.exec("wallet", "createRosenBridgeLock", payload);
 
         await app.exec("wallet", "addTxToQueue", tx);
         break;

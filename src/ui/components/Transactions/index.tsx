@@ -62,6 +62,7 @@ const ActionToText: {[actionType: string]: string} = {
   SEND: "Sent HNS",
   RECEIVE: "Received HNS",
   UPDATE: "Updated Record",
+  ROSEN_BRIDGE_LOCK: "Sent HNS",
 };
 
 const ActionToFA: {[actionType: string]: string} = {
@@ -76,6 +77,7 @@ const ActionToFA: {[actionType: string]: string} = {
   SEND: "fa-arrow-right",
   RECEIVE: "fa-arrow-left",
   UPDATE: "fa-feather-alt",
+  ROSEN_BRIDGE_LOCK: "fa-arrow-right",
 };
 
 export const TransactionRow = (props: {hash: string}): ReactElement => {
@@ -135,7 +137,7 @@ export const TransactionRow = (props: {hash: string}): ReactElement => {
       <div className="transaction__body">
         <div className="transaction__body__action">
           <div>{ActionToText[action] || action}</div>
-          {nameHash && (
+          {nameHash && action !== "ROSEN_BRIDGE_LOCK" && (
             <div className="transaction__body__action__name">
               <Name hash={nameHash} onClick={openExplorerName} />
             </div>

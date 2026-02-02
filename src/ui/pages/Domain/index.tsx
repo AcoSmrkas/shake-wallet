@@ -38,9 +38,6 @@ export default function DomainPage(): ReactElement {
 
   useEffect(() => {
     if (!domain) return;
-    const {ownerCovenantType} = domain;
-
-    console.log({ownerCovenantType});
   }, [domain]);
 
   if (!domain) {
