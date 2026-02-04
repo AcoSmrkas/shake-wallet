@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Shake Wallet",
     "description": "Chrome Extension for Handshake",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "action": {
         "default_icon": "icon-16.png",
         "default_title": "Shake Wallet",
