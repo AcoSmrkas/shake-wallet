@@ -1202,118 +1202,79 @@ class WalletService extends GenericService {
     return createdTx.toJSON();
   };
 
-  createRosenBridgeLock = async (opts: {
-    name: string;
-    lockScriptHex: string;
-    resourceHex: string;
-    recipientAddress: string;
-    recipientAmount: number;
+  createRosenBridgeData = async (opts: {
+    receiver: string;
+    amount: number;
+    data: string;
+    rate?: number;
   }) => {
-    const {name, lockScriptHex, resourceHex} = opts;
+    const {receiver, amount, data, rate} = opts;
     const walletId = this.selectedID;
     const wallet = await this.wdb.get(walletId);
     const latestBlockNow = await this.exec("node", "getLatestBlock");
     this.wdb.height = latestBlockNow.height;
 
-    // 1. Derive lock address from script
-    const scriptRaw = Buffer.from(lockScriptHex, 'hex');
-    const scriptHash = sha3.digest(scriptRaw);
-    const lockAddr = Address.fromHash(scriptHash, 0);
+    const MIN_UTXO_VALUE = 1000; // Minimum dollarydoos for data outputs
 
-    // 2. Fetch name state from node
-    const nameInfo = await this.exec("node", "getNameInfo", name);
-    const info = nameInfo?.result?.info || nameInfo?.info;
-    if (!info) throw new Error(`Name not found: "${name}"`);
+    // Validate inputs
+    if (!receiver) throw new Error("Receiver address required");
+    if (!amount || amount <= 0) throw new Error("Invalid amount");
+    if (!data) throw new Error("Data hex required");
 
-    const ownerHash = info.owner.hash;
-    const ownerIndex = info.owner.index;
-
-    // 3. Fetch name coin from node (not wallet — it's at the lock address)
-    const coinTx = await this.exec("node", "getTXByHash", ownerHash);
-    let coinJSON = coinTx.outputs[ownerIndex];
-    if (!coinJSON) throw new Error(`Could not fetch name coin for "${name}".`);
-
-    coinJSON.version = coinTx.version;
-    coinJSON.height = coinTx.height;
-    coinJSON.coinbase = false;
-    coinJSON.hash = coinTx.hash;
-    coinJSON.index = ownerIndex;
-    
-    const coin = Coin.fromJSON(coinJSON);
-
-    // 4. Verify the coin is at the lock address
-    const coinAddrStr = coin.address.toString(this.network.type);
-    const lockAddrStr = lockAddr.toString(this.network.type);
-    if (coinAddrStr !== lockAddrStr) {
-      throw new Error(`Name coin is not at lock address. Expected ${lockAddrStr}, got ${coinAddrStr}`);
+    // Validate data is valid hex
+    if (!/^[0-9a-fA-F]*$/.test(data)) {
+      throw new Error("Data must be valid hex string");
     }
 
-    // 5. Build a fee-only MTX, let the wallet fund it, then merge
-    const feeMtx = new MTX();
+    // Split data into 20-byte chunks (40 hex chars each)
+    const dataChunks: string[] = [];
+    for (let i = 0; i < data.length; i += 40) {
+      const chunk = data.slice(i, i + 40).padEnd(40, '0');
+      dataChunks.push(chunk);
+    }
 
-    // Add outputs the wallet needs to fund
-    feeMtx.addOutput({
-      address: Address.fromString(opts.recipientAddress, this.network.type),
-      value: opts.recipientAmount,
-    });
-
-    // 6. Fund the fee MTX (no pre-existing inputs — clean slate)
-    await wallet.fill(feeMtx);
-    const fundedFee = await wallet.finalize(feeMtx, {sort: false});
-
-    // 7. Assemble the final MTX
     const mtx = new MTX();
 
-    // Input 0: name coin (at lock address)
-    mtx.addCoin(coin);
+    // Output 0: HNS to receiver (Rosen lock address)
+    mtx.addOutput({
+      address: Address.fromString(receiver, this.network.type),
+      value: amount,
+    });
 
-    // Copy wallet inputs (fee coins)
-    for (const input of fundedFee.inputs) {
-      mtx.inputs.push(input);
+    // Outputs 1+: Data chunks encoded as P2WPKH addresses
+    for (let i = 0; i < dataChunks.length; i++) {
+      const chunk = dataChunks[i];
+      const dataHash = Buffer.from(chunk, 'hex');
+
+      // Create P2WPKH address from data (version 0)
+      const dataAddress = Address.fromHash(dataHash, 0);
+
+      // Value ordered by index for extraction
+      const outputValue = MIN_UTXO_VALUE + i;
+
+      console.log(`[Rosen Bridge] Data output ${i}: ${outputValue} dollarydoos to ${dataAddress.toString(this.network.type)}`);
+
+      mtx.addOutput({
+        address: dataAddress,
+        value: outputValue,
+      });
     }
 
-    // Output 0: name coin back to lock address
-    const output = new Output();
-    output.address = lockAddr;
-    output.value = coin.value;
-    output.covenant.type = types.UPDATE;
-    output.covenant.push(coin.covenant.get(0)); // nameHash
-    output.covenant.push(coin.covenant.get(1)); // height
-    output.covenant.push(Buffer.from(resourceHex, 'hex')); // resource
-    mtx.outputs.push(output);
-
-    // Copy wallet outputs (recipient + change)
-    for (const out of fundedFee.outputs) {
-      // Skip the dummy 0-value output if no recipient
-      if (out.value === 0 && !opts.recipientAddress) continue;
-      mtx.outputs.push(out);
+    // Fund the transaction (wallet adds inputs for fees)
+    try {
+      await wallet.fill(mtx, rate && {rate});
+    } catch (e) {
+      console.error('[Rosen Bridge] Fill error:', e);
+      throw new Error(`Failed to fund transaction: ${e.message}`);
     }
 
-    // Add the external coin to view
-    if (coinJSON) {
-      mtx.view.addCoin(Coin.fromJSON(coinJSON));
+    try {
+      const createdTx = await wallet.finalize(mtx);
+      return createdTx.toJSON();
+    } catch (e) {
+      console.error('[Rosen Bridge] Finalize error:', e);
+      throw new Error(`Failed to finalize transaction: ${e.message}`);
     }
-
-    // Add wallet-owned coins to view
-    const lockIdx = 0;
-    for (let i = 0; i < mtx.inputs.length; i++) {
-      if (i === lockIdx) continue;
-      const {prevout} = mtx.inputs[i];
-      const walletCoin = await wallet.getCoin(prevout.hash, prevout.index);
-      if (walletCoin) {
-        mtx.view.addCoin(walletCoin);
-      }
-    }
-
-    // 8. Tag the JSON with lock script so acceptTx can set the witness and sign
-    const json = mtx.toJSON();
-    json._lockScriptHex = lockScriptHex;
-    json._lockInputIndex = lockIdx;
-
-    // Include the external coin data so acceptTx can reconstruct the view
-    json._externalCoin = coinJSON;
-
-    return json;
   };
 
   createSend = async (txOptions: any) => {
@@ -1427,27 +1388,16 @@ class WalletService extends GenericService {
       if (!opts.txJSON.method) {
         const latestBlockNow = await this.exec("node", "getLatestBlock");
         this.wdb.height = latestBlockNow.height;
+
         const mtx = MTX.fromJSON(opts.txJSON);
 
-        // Handle locked name transactions: set lock script witness
-        // and re-add external coin to view before signing
-        if (opts.txJSON._lockScriptHex != null && opts.txJSON._lockInputIndex != null) {
-          const lockIdx = opts.txJSON._lockInputIndex;
-          const lockRaw = Buffer.from(opts.txJSON._lockScriptHex, 'hex');
-
-          // Set lock script witness
-          mtx.inputs[lockIdx].witness = Witness.fromItems([lockRaw]);
-
-          // Sign wallet-owned inputs (lock input already has witness)
-          await wallet.sign(mtx, this.passphrase);
-
-          const tx = mtx.toTX();
-          await this.exec("node", "sendRawTransaction", tx.toHex());
-          returnValue = tx.getJSON(this.network);
-        } else {
+        try {
           const tx = await wallet.sendMTX(mtx, this.passphrase);
           await this.exec("node", "sendRawTransaction", tx.toHex());
           returnValue = tx.getJSON(this.network);
+        } catch (e) {
+          console.error('[Submit TX] Error:', e);
+          throw e;
         }
       }
 

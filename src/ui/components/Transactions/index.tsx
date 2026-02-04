@@ -61,8 +61,7 @@ const ActionToText: {[actionType: string]: string} = {
   REDEEM: "Redeemed Bid",
   SEND: "Sent HNS",
   RECEIVE: "Received HNS",
-  UPDATE: "Updated Record",
-  ROSEN_BRIDGE_LOCK: "Sent HNS",
+  UPDATE: "Updated Record"
 };
 
 const ActionToFA: {[actionType: string]: string} = {
@@ -76,8 +75,7 @@ const ActionToFA: {[actionType: string]: string} = {
   REDEEM: "fa-coins",
   SEND: "fa-arrow-right",
   RECEIVE: "fa-arrow-left",
-  UPDATE: "fa-feather-alt",
-  ROSEN_BRIDGE_LOCK: "fa-arrow-right",
+  UPDATE: "fa-feather-alt"
 };
 
 export const TransactionRow = (props: {hash: string}): ReactElement => {

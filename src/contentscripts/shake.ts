@@ -139,24 +139,19 @@ async function sendUpdate(name: string, records: UpdateRecordType[]) {
 }
 
 /**
- * Send a locked name UPDATE transaction
- * @param name - name to update (must be at the lock address)
- * @param lockScriptHex - raw lock script in hex
- * @param resourceHex - encoded resource data in hex
- * @param recipientAddress - optional address to send HNS to
- * @param recipientAmount - optional amount (in dollarydoos) to send
+ * Send Rosen Bridge lock transaction with data-encoded outputs
+ * @param receiver - address to receive the lock amount
+ * @param amount - amount (in dollarydoos) to send to receiver
+ * @param data - hex-encoded Rosen bridge metadata (will be split into 20-byte chunks)
  */
-async function sendRosenBridgeLock(opts: {
-  name: string;
-  lockScriptHex: string;
-  resourceHex: string;
-  recipientAddress?: string;
-  recipientAmount?: number;
-  rate?: number;
+async function sendRosenBridgeData(opts: {
+  receiver: string;
+  amount: number;
+  data: string;
 }) {
   await assertunLocked();
   return post({
-    type: MessageTypes.SEND_ROSEN_BRIDGE_LOCK,
+    type: MessageTypes.SEND_ROSEN_BRIDGE_DATA,
     payload: opts,
   });
 }
@@ -294,7 +289,7 @@ const wallet = {
   getAddress,
   createReveal,
   send,
-  sendRosenBridgeLock,
+  sendRosenBridgeData,
   sendOpen,
   sendBid,
   sendReveal,

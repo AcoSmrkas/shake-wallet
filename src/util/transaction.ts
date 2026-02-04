@@ -8,21 +8,6 @@ export function getTXValue(tx: Transaction|SignMessageRequest): number {
   let covAction = null;
   let covValue = 0;
   let totalValue = 0;
-  let isRosen = false;
-
-  // Check special rosen bridge TX
-  for (let i = 0; i < tx.inputs.length; i++) {
-    if (tx.inputs[i].address === ANYONE_CAN_SPEND_ADDRESS
-      || tx.inputs[i].coin?.address === ANYONE_CAN_SPEND_ADDRESS
-    ) {
-      for (let j = 0; j < tx.outputs.length; j++) {
-        if (tx.outputs[j].address === ANYONE_CAN_SPEND_ADDRESS) {
-          isRosen = true;
-          break;
-        }
-      }
-    }
-  }
 
   for (let i = 0; i < tx.outputs.length; i++) {
     const output = tx.outputs[i];
@@ -74,7 +59,7 @@ export function getTXValue(tx: Transaction|SignMessageRequest): number {
   }
 
   // This TX was a covenant, return.
-  if (covAction && !isRosen) {
+  if (covAction) {
     return covValue;
   }
 
@@ -100,19 +85,6 @@ export function getTXValue(tx: Transaction|SignMessageRequest): number {
 export function getTXAction(tx: Transaction|SignMessageRequest): string {
   if (tx.method) {
     return tx.method;
-  }
-
-  // Check special rosen bridge TX
-  for (let i = 0; i < tx.inputs.length; i++) {
-    if (tx.inputs[i].address === ANYONE_CAN_SPEND_ADDRESS
-      || tx.inputs[i].coin?.address === ANYONE_CAN_SPEND_ADDRESS
-    ) {
-      for (let j = 0; j < tx.outputs.length; j++) {
-        if (tx.outputs[j].address === ANYONE_CAN_SPEND_ADDRESS) {
-          return 'ROSEN_BRIDGE_LOCK';
-        }
-      }
-    }
   }
 
   // Look for covenants. A TX with multiple covenant types is not supported

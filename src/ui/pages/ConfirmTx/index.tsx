@@ -35,8 +35,7 @@ const actionToTitle: {
   REVEAL: "Confirm Reveal",
   REDEEM: "Confirm Redeem",
   REGISTER: "Confirm Register",
-  UPDATE: "Confirm Update",
-  ROSEN_BRIDGE_LOCK: "Confirm Send",
+  UPDATE: "Confirm Update"
 };
 
 export default function ConfirmTx(): ReactElement {
