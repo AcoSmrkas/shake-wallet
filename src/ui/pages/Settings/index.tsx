@@ -589,25 +589,31 @@ function SignMessageContent(): ReactElement {
       >
         <small>Sign a message with the key that owns one of your names.</small>
       </SettingGroup>
-      <Textarea
-        label="Message"
-        rows={5}
-        placeholder="Message to sign"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-      />
-      {error && <small className="error-message">{error}</small>}
-      <Button disabled={!name || !message} onClick={onSign}>
-        Sign Message
-      </Button>
-      {signature && (
-        <>
-          <Textarea label="Signature" rows={5} value={signature} readOnly />
-          <Button btnType={ButtonType.secondary} onClick={copySignature} small>
-            {copied ? "Copied!" : "Copy Signature"}
-          </Button>
-        </>
-      )}
+      <div className="message-form">
+        <Textarea
+          label="Message"
+          rows={5}
+          placeholder="Message to sign"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+        {error && <small className="error-message">{error}</small>}
+        <Button disabled={!name || !message} onClick={onSign}>
+          Sign Message
+        </Button>
+        {signature && (
+          <>
+            <Textarea label="Signature" rows={5} value={signature} readOnly />
+            <Button
+              btnType={ButtonType.secondary}
+              onClick={copySignature}
+              small
+            >
+              {copied ? "Copied!" : "Copy Signature"}
+            </Button>
+          </>
+        )}
+      </div>
     </>
   );
 }
@@ -634,7 +640,7 @@ function VerifyMessageContent(): ReactElement {
   }, [message, signature, name]);
 
   return (
-    <>
+    <div className="message-form">
       <Input
         label="Name"
         type="text"
@@ -659,7 +665,7 @@ function VerifyMessageContent(): ReactElement {
       {error && <small className="error-message">{error}</small>}
       {result !== null &&
         (result ? (
-          <small>✓ Signature is valid.</small>
+          <small className="message-form__valid">✓ Signature is valid.</small>
         ) : (
           <small className="error-message">✗ Signature is invalid.</small>
         ))}
@@ -669,7 +675,7 @@ function VerifyMessageContent(): ReactElement {
       >
         Verify Message
       </Button>
-    </>
+    </div>
   );
 }
 

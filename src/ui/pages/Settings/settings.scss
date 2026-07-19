@@ -80,6 +80,26 @@
   }
 }
 
+.message-form {
+  @extend %col-nowrap;
+  padding: variables.$gutter;
+  gap: 0.75rem;
+
+  .input-group,
+  .textarea-group {
+    width: 100%;
+  }
+
+  .button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  &__valid {
+    color: variables.$success-green;
+  }
+}
+
 .confirm-modal {
   @extend %col-nowrap;
   padding: 1rem 1.5rem;
