@@ -12,6 +12,8 @@ import Name from "@src/ui/components/Name";
 import {useDispatch} from "react-redux";
 import {Loader} from "@src/ui/components/Loader";
 import {useHistory} from "react-router";
+import {useCurrentBlockHeight} from "@src/ui/ducks/node";
+import classNames from "classnames";
 const Network = require("hsd/lib/protocol/network");
 const networkType = process.env.NETWORK_TYPE || 'main';
 
@@ -40,8 +42,15 @@ export function DomainRow(props: {name: string}): ReactElement {
   const domain = useDomainByName(props.name);
   const network = Network.get(networkType);
   const history = useHistory();
+  const height = useCurrentBlockHeight();
 
   if (!domain) return <></>;
+
+  const isTransferring = domain.ownerCovenantType === 'TRANSFER';
+  const canFinalize =
+    isTransferring &&
+    domain.transfer > 0 &&
+    height >= domain.transfer + network.names.transferLockup;
 
   const expiry = heightToMoment(domain.renewal + network.names.renewalWindow).format('YYYY-MM-DD');
 
@@ -55,8 +64,17 @@ export function DomainRow(props: {name: string}): ReactElement {
           <Name name={domain.name} />
           {
             ['REGISTER', 'FINALIZE', 'RENEW', 'UPDATE', 'TRANSFER'].includes(domain?.ownerCovenantType || '') && (
-              <div className="domain__info__name__status">
-                Registered
+              <div
+                className={classNames("domain__info__name__status", {
+                  "domain__info__name__status--pending":
+                    isTransferring && !canFinalize,
+                  "domain__info__name__status--ready":
+                    isTransferring && canFinalize,
+                })}
+              >
+                {isTransferring
+                  ? (canFinalize ? 'Ready to Finalize' : 'Transfer Pending')
+                  : 'Registered'}
               </div>
             )
           }

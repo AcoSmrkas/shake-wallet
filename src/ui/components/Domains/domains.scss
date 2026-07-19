@@ -53,6 +53,16 @@
         color: rgba(variables.$primary-blue, .75);
         background-color: rgba(variables.$primary-blue, .1);
       }
+
+      &__status--pending {
+        color: rgba(variables.$warning-orange, .75);
+        background-color: rgba(variables.$warning-orange, .1);
+      }
+
+      &__status--ready {
+        color: rgba(variables.$success-green, .75);
+        background-color: rgba(variables.$success-green, .1);
+      }
     }
 
     &__expiry {
