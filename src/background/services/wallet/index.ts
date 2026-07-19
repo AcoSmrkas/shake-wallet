@@ -273,6 +273,13 @@ class WalletService extends GenericService {
     };
   };
 
+  // Returns the account extended public key (xpub). Backs the GET_ACCOUNT_KEY
+  // controller, which previously referenced this method before it existed.
+  getAccountKey = async (accountName?: string, id?: string): Promise<string | null> => {
+    const account = await this.getAccountInfo(accountName, id);
+    return account ? account.accountKey : null;
+  };
+
   renameAccount = async (currentName: string, rename: string) => {
     const wallet = await this.wdb.get(this.selectedID);
 
@@ -443,9 +450,16 @@ class WalletService extends GenericService {
       return this.transactions;
     }
 
+    // Unconfirmed txs report height <= 0. Treat them as the newest so they
+    // sort to the top after the reverse below, instead of being read as the
+    // oldest and pinned to the bottom of the list.
+    const sortHeight = (h: number) => (h > 0 ? h : Number.MAX_SAFE_INTEGER);
+
     txs = txs.sort((a: Transaction, b: Transaction) => {
-      if (a.height > b.height) return 1;
-      if (b.height > a.height) return -1;
+      const ha = sortHeight(a.height);
+      const hb = sortHeight(b.height);
+      if (ha > hb) return 1;
+      if (hb > ha) return -1;
       if (a.time > b.time) return 1;
       if (b.time > a.time) return -1;
       return 0;
@@ -1187,6 +1201,67 @@ class WalletService extends GenericService {
       opts.feeRate && {
         rate: opts.feeRate,
       }
+    );
+    return createdTx.toJSON();
+  };
+
+  createTransfer = async (opts: {
+    name: string;
+    address: string;
+    rate?: number;
+  }) => {
+    const {name, address, rate} = opts;
+    const walletId = this.selectedID;
+    const wallet = await this.wdb.get(walletId);
+    const latestBlockNow = await this.exec("node", "getLatestBlock");
+    this.wdb.height = latestBlockNow.height;
+
+    await this.addNameState(name);
+
+    if (!rules.verifyName(name)) throw new Error("Invalid name.");
+
+    const recipient = Address.fromString(address, this.network);
+
+    const createdTx = await wallet.createTransfer(
+      name,
+      recipient,
+      rate ? {rate} : undefined
+    );
+    return createdTx.toJSON();
+  };
+
+  createFinalize = async (opts: {name: string; rate?: number}) => {
+    const {name, rate} = opts;
+    const walletId = this.selectedID;
+    const wallet = await this.wdb.get(walletId);
+    const latestBlockNow = await this.exec("node", "getLatestBlock");
+    this.wdb.height = latestBlockNow.height;
+
+    await this.addNameState(name);
+
+    if (!rules.verifyName(name)) throw new Error("Invalid name.");
+
+    const createdTx = await wallet.createFinalize(
+      name,
+      rate ? {rate} : undefined
+    );
+    return createdTx.toJSON();
+  };
+
+  createCancel = async (opts: {name: string; rate?: number}) => {
+    const {name, rate} = opts;
+    const walletId = this.selectedID;
+    const wallet = await this.wdb.get(walletId);
+    const latestBlockNow = await this.exec("node", "getLatestBlock");
+    this.wdb.height = latestBlockNow.height;
+
+    await this.addNameState(name);
+
+    if (!rules.verifyName(name)) throw new Error("Invalid name.");
+
+    const createdTx = await wallet.createCancel(
+      name,
+      rate ? {rate} : undefined
     );
     return createdTx.toJSON();
   };

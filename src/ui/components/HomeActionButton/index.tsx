@@ -6,6 +6,7 @@ import "./home-action-btn.scss";
 import postMessage from "@src/util/postMessage";
 import MessageTypes from "@src/util/messageTypes";
 import {useDomainByName} from "@src/ui/ducks/domains";
+import TransferDomainModal from "@src/ui/components/TransferDomainModal";
 
 type Props = {
   color: 'blue' | 'orange' | 'green';
@@ -189,24 +190,90 @@ export function RenewButton(): ReactElement {
   )
 }
 
-export function TransferButton(): ReactElement {
+export function TransferButton(props: { name: string }): ReactElement {
+  const [showModal, setShowModal] = useState(false);
+
   return (
-    <HomeActionButton
-      color="green"
-      text="Transfer"
-      fontAwesome="fa-exchange-alt"
-      onClick={() => null}
-    />
+    <>
+      <HomeActionButton
+        color="green"
+        text="Transfer"
+        fontAwesome="fa-exchange-alt"
+        onClick={() => setShowModal(true)}
+      />
+      {showModal && (
+        <TransferDomainModal
+          name={props.name}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+    </>
   )
 }
 
-export function FinalizeButton(): ReactElement {
+export function FinalizeButton(props: { name: string; disabled?: boolean; onError?: (msg: string) => void }): ReactElement {
+  const sendTx = useCallback(async () => {
+    props.onError?.("");
+    try {
+      const tx = await postMessage({
+        type: MessageTypes.CREATE_FINALIZE,
+        payload: { name: props.name },
+      });
+
+      if (!tx) {
+        return;
+      }
+
+      await postMessage({
+        type: MessageTypes.ADD_TX_QUEUE,
+        payload: tx,
+      });
+    } catch (e: any) {
+      console.log(e);
+      props.onError?.(e?.message || "Failed to finalize transfer.");
+    }
+  }, [props.name, props.onError]);
+
   return (
     <HomeActionButton
       color="green"
       text="Finalize"
       fontAwesome="fa-receipt"
-      onClick={() => null}
+      onClick={props.disabled ? () => null : sendTx}
+      disabled={props.disabled}
+    />
+  )
+}
+
+export function CancelTransferButton(props: { name: string; onError?: (msg: string) => void }): ReactElement {
+  const sendTx = useCallback(async () => {
+    props.onError?.("");
+    try {
+      const tx = await postMessage({
+        type: MessageTypes.CREATE_CANCEL,
+        payload: { name: props.name },
+      });
+
+      if (!tx) {
+        return;
+      }
+
+      await postMessage({
+        type: MessageTypes.ADD_TX_QUEUE,
+        payload: tx,
+      });
+    } catch (e: any) {
+      console.log(e);
+      props.onError?.(e?.message || "Failed to cancel transfer.");
+    }
+  }, [props.name, props.onError]);
+
+  return (
+    <HomeActionButton
+      color="orange"
+      text="Cancel"
+      fontAwesome="fa-times"
+      onClick={sendTx}
     />
   )
 }

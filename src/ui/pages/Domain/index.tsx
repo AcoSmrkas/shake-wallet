@@ -9,11 +9,18 @@ import {useDispatch} from "react-redux";
 import {
   RedeemButton,
   RegisterButton,
+  TransferButton,
+  FinalizeButton,
+  CancelTransferButton,
 } from "@src/ui/components/HomeActionButton";
 import MessageTypes from "@src/util/messageTypes";
 import postMessage from "@src/util/postMessage";
+import {useCurrentBlockHeight} from "@src/ui/ducks/node";
 const Network = require("hsd/lib/protocol/network");
 const networkType = process.env.NETWORK_TYPE || "main";
+
+// Covenant states from which a settled, owned name can be transferred.
+const TRANSFERABLE_COVENANTS = ["REGISTER", "UPDATE", "RENEW", "FINALIZE"];
 
 export default function DomainPage(): ReactElement {
   const {name} = useParams<{name: string}>();
@@ -21,7 +28,9 @@ export default function DomainPage(): ReactElement {
   const domain = useDomainByName(name);
   const dispatch = useDispatch();
   const network = Network.get(networkType);
+  const height = useCurrentBlockHeight();
   const [records, setRecords] = useState([]);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     dispatch(fetchDomainName(name));
@@ -48,6 +57,12 @@ export default function DomainPage(): ReactElement {
     domain.renewal + network.names.renewalWindow
   ).format("YYYY-MM-DD");
 
+  const isTransferring = domain.ownerCovenantType === "TRANSFER";
+  const finalizeHeight = domain.transfer + network.names.transferLockup;
+  const canFinalize =
+    isTransferring && domain.transfer > 0 && height >= finalizeHeight;
+  const blocksUntilFinalize = Math.max(0, finalizeHeight - height);
+
   return (
     <div className="domain-page">
       <div className="domain-page__header">
@@ -73,7 +88,39 @@ export default function DomainPage(): ReactElement {
             {domain?.ownerCovenantType === "REVEAL" && (
               <RegisterButton name={name} />
             )}
+            {TRANSFERABLE_COVENANTS.includes(
+              domain?.ownerCovenantType || ""
+            ) && <TransferButton name={name} />}
+            {isTransferring && (
+              <>
+                <FinalizeButton
+                  name={name}
+                  disabled={!canFinalize}
+                  onError={setActionError}
+                />
+                <CancelTransferButton name={name} onError={setActionError} />
+              </>
+            )}
           </div>
+          {actionError && (
+            <div className="domain-page__header__content__error">
+              {actionError}
+            </div>
+          )}
+          {isTransferring && !canFinalize && (
+            <div className="domain-page__header__content__lockup">
+              {height < 0
+                ? "Transfer pending…"
+                : `Finalize available in ${blocksUntilFinalize} block${
+                    blocksUntilFinalize === 1 ? "" : "s"
+                  }`}
+            </div>
+          )}
+          {isTransferring && canFinalize && (
+            <div className="domain-page__header__content__lockup">
+              Lockup complete — ready to finalize.
+            </div>
+          )}
         </div>
       </div>
       <div className="domain-page__content">

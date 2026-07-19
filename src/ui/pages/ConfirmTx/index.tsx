@@ -2,7 +2,7 @@ import React, {ReactElement, useCallback, useEffect, useState} from "react";
 import {useDispatch} from "react-redux";
 import {useQueuedTXByHash, useTXQueue} from "@src/ui/ducks/queue";
 import Button, {ButtonType} from "@src/ui/components/Button";
-import {getTXAction, getTXNameHash, getTXRecipient, getTXRecords, getTXValue} from "@src/util/transaction";
+import {getTXAction, getTXNameHash, getTXRecipient, getTXRecords, getTXTransferRecipient, getTXValue} from "@src/util/transaction";
 import {fetchPendingTransactions, SignMessageRequest, Transaction} from "@src/ui/ducks/transactions";
 import Input from "@src/ui/components/Input";
 import {formatNumber, fromDollaryDoos} from "@src/util/number";
@@ -25,6 +25,9 @@ import UpdateTx from "@src/ui/pages/UpdateTx";
 import "./confirm-tx.scss";
 
 const {Resource} = require("hsd/lib/dns/resource");
+const Address = require("hsd/lib/primitives/address");
+const Network = require("hsd/lib/protocol/network");
+const networkType = process.env.NETWORK_TYPE || "main";
 
 const actionToTitle: {
   [k: string]: string;
@@ -35,7 +38,9 @@ const actionToTitle: {
   REVEAL: "Confirm Reveal",
   REDEEM: "Confirm Redeem",
   REGISTER: "Confirm Register",
-  UPDATE: "Confirm Update"
+  UPDATE: "Confirm Update",
+  TRANSFER: "Confirm Transfer",
+  FINALIZE: "Confirm Finalize"
 };
 
 export default function ConfirmTx(): ReactElement {
@@ -384,6 +389,61 @@ function ConfirmContent(props: {hash: string}): ReactElement {
           />
         </>
       );
+    case "FINALIZE": {
+      // The FINALIZE output carries the new owner's address — surface it so the
+      // user can verify the destination before this irreversible step.
+      const finalizeOutput = pendingTx.outputs.find(
+        (o: any) => o.covenant.action === "FINALIZE"
+      );
+      return (
+        <>
+          <Input label="TLD" value={name} spellCheck={false} disabled />
+          {finalizeOutput && (
+            <Input
+              label="New Owner Address"
+              value={finalizeOutput.address}
+              spellCheck={false}
+              disabled
+            />
+          )}
+          <Input
+            label="Estimated Fee"
+            value={fromDollaryDoos(pendingTx.fee, 6)}
+            disabled
+          />
+        </>
+      );
+    }
+    case "TRANSFER": {
+      const recipient = getTXTransferRecipient(pendingTx);
+      let recipientAddr = "";
+      try {
+        if (recipient) {
+          recipientAddr = Address.fromHash(
+            Buffer.from(recipient.hash, "hex"),
+            recipient.version
+          ).toString(Network.get(networkType));
+        }
+      } catch (e) {
+        recipientAddr = "";
+      }
+      return (
+        <>
+          <Input label="TLD" value={name} spellCheck={false} disabled />
+          <Input
+            label="Recipient Address"
+            value={recipientAddr}
+            spellCheck={false}
+            disabled
+          />
+          <Input
+            label="Estimated Fee"
+            value={fromDollaryDoos(pendingTx.fee, 6)}
+            disabled
+          />
+        </>
+      );
+    }
     case "REGISTER":
     case "UPDATE":
       let records: any[] = [];

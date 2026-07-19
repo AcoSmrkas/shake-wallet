@@ -48,6 +48,18 @@
           padding-right: 1.25rem;
         }
       }
+
+      &__lockup {
+        @extend %small-font;
+        color: variables.$secondary-text;
+        margin-top: .5rem;
+      }
+
+      &__error {
+        @extend %small-font;
+        color: variables.$error-red;
+        margin-top: .5rem;
+      }
     }
   }
 
@@ -77,8 +89,7 @@
     padding: .5rem .75rem;
     overflow: hidden;
     border-radius: 2px;
-    margin: .25rem auto;
-    width: calc(100% - 2rem);
+    margin: .25rem 0;
 
     &__empty {
       text-align: center;

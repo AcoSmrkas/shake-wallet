@@ -139,6 +139,55 @@ async function sendUpdate(name: string, records: UpdateRecordType[]) {
 }
 
 /**
+ * Send a domain transfer (step 1 of 2).
+ * Announces the transfer of a name you own to a recipient address and starts
+ * the transfer lockup (~2 days / 288 blocks on mainnet). After the lockup you
+ * must call `finalizeTransfer` to complete it; until then `cancelTransfer` aborts it.
+ * @param name - name to transfer
+ * @param address - Handshake address of the recipient
+ */
+async function sendTransfer(name: string, address: string) {
+  await assertunLocked();
+  return post({
+    type: MessageTypes.SEND_TRANSFER,
+    payload: {
+      name,
+      address,
+    },
+  });
+}
+
+/**
+ * Finalize a domain transfer (step 2 of 2).
+ * Completes a previously-initiated transfer once its lockup has elapsed, moving
+ * ownership of the name to the recipient. Irreversible.
+ * @param name - name whose pending transfer to finalize
+ */
+async function finalizeTransfer(name: string) {
+  await assertunLocked();
+  return post({
+    type: MessageTypes.SEND_FINALIZE,
+    payload: {
+      name,
+    },
+  });
+}
+
+/**
+ * Cancel a pending domain transfer before it is finalized.
+ * @param name - name whose pending transfer to cancel
+ */
+async function cancelTransfer(name: string) {
+  await assertunLocked();
+  return post({
+    type: MessageTypes.SEND_CANCEL,
+    payload: {
+      name,
+    },
+  });
+}
+
+/**
  * Send Rosen Bridge lock transaction with data-encoded outputs
  * @param receiver - address to receive the lock amount
  * @param amount - amount (in dollarydoos) to send to receiver
@@ -283,8 +332,13 @@ async function verifyWithName(msg: string, signature: string, name: string) {
 const wallet = {
   sign,
   signWithName,
+  // Aliases matching Bob Wallet / hsd RPC method names, so dApps written
+  // "like on Bob" bind regardless of which spelling they expect.
+  // signMessageWithName(name, message) matches Bob's arg order exactly.
+  signMessageWithName: signWithName,
   verify,
   verifyWithName,
+  verifyMessageWithName: verifyWithName,
   getBalance,
   getAddress,
   createReveal,
@@ -295,6 +349,9 @@ const wallet = {
   sendReveal,
   sendRedeem,
   sendUpdate,
+  sendTransfer,
+  finalizeTransfer,
+  cancelTransfer,
   onDisconnect,
   onNewBlock,
   getBidsByName,

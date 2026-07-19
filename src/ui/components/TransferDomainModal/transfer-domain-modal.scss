@@ -1,0 +1,36 @@
+@use "../../../../src/util/variables";
+
+.transfer-domain-modal {
+  &__title {
+    @extend %row-nowrap;
+    align-items: center;
+    font-weight: 600;
+    margin-bottom: .5rem;
+
+    .name {
+      margin-left: .35rem;
+    }
+  }
+
+  &__desc {
+    @extend %small-font;
+    color: variables.$secondary-text;
+    margin: 0 0 .75rem;
+  }
+
+  &__warning {
+    @extend %small-font;
+    color: variables.$secondary-text;
+    margin: .75rem 0 0;
+  }
+
+  &__actions {
+    @extend %row-nowrap;
+    justify-content: center;
+    margin-top: 1rem;
+  }
+
+  &__cta {
+    align-self: center;
+  }
+}

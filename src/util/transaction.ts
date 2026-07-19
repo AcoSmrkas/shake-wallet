@@ -292,6 +292,34 @@ export function getTXRecipient(tx: Transaction|SignMessageRequest): string {
   return output.address;
 }
 
+// For a TRANSFER covenant the destination is encoded in the covenant items
+// ([2] = address version as u8, [3] = address hash) rather than the output
+// address (which stays with the current owner until FINALIZE). Returns the
+// raw version/hash so the caller can build a network-scoped Address.
+export function getTXTransferRecipient(
+  tx: Transaction | SignMessageRequest
+): {version: number; hash: string} | null {
+  if (tx.method) return null;
+
+  for (let i = 0; i < tx.outputs.length; i++) {
+    const output = tx.outputs[i];
+
+    if (output.path && output.path.change)
+      continue;
+
+    const covenant = output.covenant;
+
+    if (covenant.action === 'TRANSFER') {
+      return {
+        version: parseInt(covenant.items[2], 16) || 0,
+        hash: covenant.items[3],
+      };
+    }
+  }
+
+  return null;
+}
+
 export function getTXNameHash(tx: Transaction|SignMessageRequest): string {
   if (tx.method) return '';
 

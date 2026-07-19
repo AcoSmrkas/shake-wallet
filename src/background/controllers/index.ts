@@ -97,6 +97,33 @@ const controllers: {
 
         await app.exec("wallet", "addTxToQueue", tx);
         break;
+      case 'transfer':
+        app.exec("analytics", "track", {
+          name: "Shake Transfer",
+        });
+
+        tx = await app.exec("wallet", "createTransfer", payload);
+
+        await app.exec("wallet", "addTxToQueue", tx);
+        break;
+      case 'finalize':
+        app.exec("analytics", "track", {
+          name: "Shake Finalize",
+        });
+
+        tx = await app.exec("wallet", "createFinalize", payload);
+
+        await app.exec("wallet", "addTxToQueue", tx);
+        break;
+      case 'cancel':
+        app.exec("analytics", "track", {
+          name: "Shake Cancel",
+        });
+
+        tx = await app.exec("wallet", "createCancel", payload);
+
+        await app.exec("wallet", "addTxToQueue", tx);
+        break;
     }
 
     if (tx) {
@@ -145,18 +172,30 @@ const controllers: {
     const {payload} = message;
     const {address, msg} = payload;
     return new Promise(async (resolve, reject) => {
-      if (pendingPopupRequest !== null) {
-        return reject(new Error("Another transaction is already pending confirmation."));
+      try {
+        const queue = await app.exec('wallet', 'getTxQueue');
+
+        if (queue.length) {
+          return reject(new Error('user has unconfirmed tx.'));
+        }
+
+        if (pendingPopupRequest !== null) {
+          return reject(new Error("Another transaction is already pending confirmation."));
+        }
+
+        app.exec('analytics', 'track', {
+          name: 'Shake Sign',
+        });
+
+        const requestJson = await app.exec('wallet', 'createSignMessageRequest', msg, address);
+
+        await app.exec('wallet', 'addTxToQueue', requestJson);
+
+        const popup = await openPopup();
+        closePopupOnAcceptOrReject(app, resolve, reject, popup, requestJson);
+      } catch (e) {
+        reject(e);
       }
-
-      app.exec('analytics', 'track', {
-        name: 'Shake Sign',
-      });
-
-      await app.exec('wallet', 'createSignMessageRequest', msg, address);
-
-      const popup = await openPopup();
-      closePopupOnAcceptOrReject(app, resolve, reject, popup);
     });
   },
 
@@ -164,18 +203,30 @@ const controllers: {
     const {payload} = message;
     const {name, msg} = payload;
     return new Promise(async (resolve, reject) => {
-      if (pendingPopupRequest !== null) {
-        return reject(new Error("Another transaction is already pending confirmation."));
+      try {
+        const queue = await app.exec('wallet', 'getTxQueue');
+
+        if (queue.length) {
+          return reject(new Error('user has unconfirmed tx.'));
+        }
+
+        if (pendingPopupRequest !== null) {
+          return reject(new Error("Another transaction is already pending confirmation."));
+        }
+
+        app.exec('analytics', 'track', {
+          name: 'Shake Sign with Name',
+        });
+
+        const requestJson = await app.exec('wallet', 'createSignMessageRequest', msg, undefined, name);
+
+        await app.exec('wallet', 'addTxToQueue', requestJson);
+
+        const popup = await openPopup();
+        closePopupOnAcceptOrReject(app, resolve, reject, popup, requestJson);
+      } catch (e) {
+        reject(e);
       }
-
-      app.exec('analytics', 'track', {
-        name: 'Shake Sign with Name',
-      });
-
-      await app.exec('wallet', 'createSignMessageRequest', msg, undefined, name);
-
-      const popup = await openPopup();
-      closePopupOnAcceptOrReject(app, resolve, reject, popup);
     });
   },
 
@@ -311,6 +362,69 @@ const controllers: {
         }
 
         pendingPopupRequest = { type: 'redeem', payload: message.payload, resolve, reject };
+        await openPopup();
+      } catch (e) {
+        reject(e);
+      }
+    });
+  },
+
+  [MessageTypes.SEND_TRANSFER]: async (app, message) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const queue = await app.exec("wallet", "getTxQueue");
+
+        if (queue.length) {
+          return reject(new Error("user has unconfirmed tx."));
+        }
+
+        if (pendingPopupRequest !== null) {
+          return reject(new Error("Another transaction is already pending confirmation."));
+        }
+
+        pendingPopupRequest = { type: 'transfer', payload: message.payload, resolve, reject };
+        await openPopup();
+      } catch (e) {
+        reject(e);
+      }
+    });
+  },
+
+  [MessageTypes.SEND_FINALIZE]: async (app, message) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const queue = await app.exec("wallet", "getTxQueue");
+
+        if (queue.length) {
+          return reject(new Error("user has unconfirmed tx."));
+        }
+
+        if (pendingPopupRequest !== null) {
+          return reject(new Error("Another transaction is already pending confirmation."));
+        }
+
+        pendingPopupRequest = { type: 'finalize', payload: message.payload, resolve, reject };
+        await openPopup();
+      } catch (e) {
+        reject(e);
+      }
+    });
+  },
+
+  [MessageTypes.SEND_CANCEL]: async (app, message) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const queue = await app.exec("wallet", "getTxQueue");
+
+        if (queue.length) {
+          return reject(new Error("user has unconfirmed tx."));
+        }
+
+        if (pendingPopupRequest !== null) {
+          return reject(new Error("Another transaction is already pending confirmation."));
+        }
+
+        pendingPopupRequest = { type: 'cancel', payload: message.payload, resolve, reject };
         await openPopup();
       } catch (e) {
         reject(e);
@@ -559,6 +673,18 @@ const controllers: {
 
   [MessageTypes.CREATE_UPDATE]: async (app, message) => {
     return app.exec("wallet", "createUpdate", message.payload);
+  },
+
+  [MessageTypes.CREATE_TRANSFER]: async (app, message) => {
+    return app.exec("wallet", "createTransfer", message.payload);
+  },
+
+  [MessageTypes.CREATE_FINALIZE]: async (app, message) => {
+    return app.exec("wallet", "createFinalize", message.payload);
+  },
+
+  [MessageTypes.CREATE_CANCEL]: async (app, message) => {
+    return app.exec("wallet", "createCancel", message.payload);
   },
 
   [MessageTypes.CREATE_TX]: async (app, message) => {
