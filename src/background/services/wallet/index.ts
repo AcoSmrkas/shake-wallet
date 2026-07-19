@@ -1233,6 +1233,16 @@ class WalletService extends GenericService {
       dataChunks.push(chunk);
     }
 
+    // Rosen's Handshake extractor only reads the first 4 data chunks (the
+    // outputs valued 1000..1003), i.e. at most 80 bytes of metadata. Emitting
+    // more would silently drop the tail of the payload and produce a lock the
+    // bridge cannot decode, so fail before building the tx.
+    if (dataChunks.length > 4) {
+      throw new Error(
+        `Rosen bridge data too large: ${dataChunks.length} chunks (max 4 / 80 bytes)`,
+      );
+    }
+
     const mtx = new MTX();
 
     // Output 0: HNS to receiver (Rosen lock address)

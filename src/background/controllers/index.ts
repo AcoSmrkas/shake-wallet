@@ -305,28 +305,6 @@ const controllers: {
     });
   },
 
-  [MessageTypes.SEND_ROSEN_BRIDGE_LOCK]: async (app, message) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const queue = await app.exec("wallet", "getTxQueue");
-
-        if (queue.length) {
-          return reject(new Error("user has unconfirmed tx."));
-        }
-
-        if (pendingPopupRequest !== null) {
-          return reject(new Error("Another transaction is already pending confirmation."));
-        }
-
-        pendingPopupRequest = { type: 'rosen_bridge_lock', payload: message.payload, resolve, reject };
-        const popup = await openPopup();
-        closePopupOnAcceptOrReject(app, resolve, reject, popup);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  },
-
   [MessageTypes.SEND_ROSEN_BRIDGE_DATA]: async (app, message) => {
     return new Promise(async (resolve, reject) => {
       try {

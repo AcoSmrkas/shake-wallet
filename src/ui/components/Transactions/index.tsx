@@ -135,7 +135,7 @@ export const TransactionRow = (props: {hash: string}): ReactElement => {
       <div className="transaction__body">
         <div className="transaction__body__action">
           <div>{ActionToText[action] || action}</div>
-          {nameHash && action !== "ROSEN_BRIDGE_LOCK" && (
+          {nameHash && (
             <div className="transaction__body__action__name">
               <Name hash={nameHash} onClick={openExplorerName} />
             </div>
