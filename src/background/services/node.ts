@@ -45,10 +45,24 @@ export default class NodeService extends GenericService {
   };
 
   getLatestBlock = async () => {
-    const blockchanInfo = await this.getBlockchainInfo();
-    const block = await this.getBlockByHeight(blockchanInfo!.result!.blocks);
+    const blockchainInfo = await this.getBlockchainInfo();
+    const result = blockchainInfo?.result || {};
+    const height = result.blocks;
+    const hash = result.bestblockhash;
 
-    const {hash, height, time} = block || {};
+    // Only {hash, height, time} is needed here. Resolving the tip via
+    // getBlockByHeight fetches the ENTIRE block (~1.4MB, 5-20s) on every poll,
+    // which stalls the block number, activity and domains — all of which await
+    // getLatestBlock. The block header carries the exact time for ~1KB/0.5s.
+    let time = result.mediantime;
+    try {
+      const header = await this.getBlockHeader(hash);
+      if (header?.result?.time != null) {
+        time = header.result.time;
+      }
+    } catch (e) {
+      console.error("getBlockHeader failed; using mediantime.", e);
+    }
 
     return {
       hash,
@@ -66,6 +80,19 @@ export default class NodeService extends GenericService {
       body: JSON.stringify({
         method: "getblockchaininfo",
         params: [],
+      }),
+    });
+  }
+
+  async getBlockHeader(hash: string) {
+    const headers = await this.getHeaders();
+
+    return this.fetch(null, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        method: "getblockheader",
+        params: [hash, true],
       }),
     });
   }
