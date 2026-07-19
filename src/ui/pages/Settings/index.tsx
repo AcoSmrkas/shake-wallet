@@ -22,6 +22,8 @@ import {selectAccount, useWalletState} from "@src/ui/ducks/wallet";
 import {setMultiAccountsEnabled, useMultiAccountsEnabled} from "@src/ui/ducks/app";
 import Modal from "@src/ui/components/Modal";
 import Textarea from "@src/ui/components/Textarea";
+import copy from "copy-to-clipboard";
+import {fetchDomainNames, useDomainNames} from "@src/ui/ducks/domains";
 import SwitchButton from "@src/ui/components/SwitchButton";
 import Select from "@src/ui/components/Select";
 import {EXPLORERS} from "@src/util/explorer";
@@ -97,6 +99,26 @@ export default function Settings(): ReactElement {
             <div className="settings__title">About</div>
           </RegularViewHeader>
         </Route>
+        <Route path="/settings/sign-message">
+          <RegularViewHeader onClose={() => history.push("/")}>
+            <Icon
+              size={1.25}
+              fontAwesome="fa-arrow-left"
+              onClick={() => history.goBack()}
+            />
+            <div className="settings__title">Sign Message</div>
+          </RegularViewHeader>
+        </Route>
+        <Route path="/settings/verify-message">
+          <RegularViewHeader onClose={() => history.push("/")}>
+            <Icon
+              size={1.25}
+              fontAwesome="fa-arrow-left"
+              onClick={() => history.goBack()}
+            />
+            <div className="settings__title">Verify Message</div>
+          </RegularViewHeader>
+        </Route>
         <Route path="/settings">
           <RegularViewHeader onClose={() => history.push("/")}>
             Settings
@@ -119,6 +141,12 @@ export default function Settings(): ReactElement {
           </Route>
           <Route path="/settings/about">
             <SettingGroup name="Version">{pkg.version}</SettingGroup>
+          </Route>
+          <Route path="/settings/sign-message">
+            <SignMessageContent />
+          </Route>
+          <Route path="/settings/verify-message">
+            <VerifyMessageContent />
           </Route>
           <Route path="/settings">
             <SettingsSelectContent />
@@ -326,6 +354,10 @@ function SecurityContent(): ReactElement {
   const [revealError, setRevealError] = useState("");
   const [mnemonic, setMnemonic] = useState("");
   const [optInAnalytics, setOptInAnalytics] = useState(false);
+  const [isShowingKeyModal, setShowingKeyModal] = useState(false);
+  const [accountKey, setAccountKey] = useState("");
+  const [keyError, setKeyError] = useState("");
+  const [keyCopied, setKeyCopied] = useState(false);
 
   useEffect(() => {
     (async function () {
@@ -368,6 +400,32 @@ function SecurityContent(): ReactElement {
     setPassword("");
     setRevealError("");
     setShowingRevealModal(false);
+  }, []);
+
+  const viewAccountKey = useCallback(async () => {
+    try {
+      const info: any = await postMessage({
+        type: MessageTypes.GET_ACCOUNT_INFO,
+      });
+      setAccountKey(info?.accountKey || "");
+      setKeyError(info?.accountKey ? "" : "Account key unavailable.");
+    } catch (e: any) {
+      setKeyError(e.message);
+    }
+    setShowingKeyModal(true);
+  }, []);
+
+  const copyAccountKey = useCallback(() => {
+    if (!accountKey) return;
+    copy(accountKey);
+    setKeyCopied(true);
+  }, [accountKey]);
+
+  const closeKeyModal = useCallback(() => {
+    setAccountKey("");
+    setKeyError("");
+    setKeyCopied(false);
+    setShowingKeyModal(false);
   }, []);
 
   return (
@@ -419,6 +477,35 @@ function SecurityContent(): ReactElement {
           )}
         </Modal>
       )}
+      {isShowingKeyModal && (
+        <Modal className="confirm-modal reveal-seed" onClose={closeKeyModal}>
+          <p>View Account Key</p>
+          <small>
+            Anyone with this public key has read-only access to this wallet
+            account and all its transaction history.
+          </small>
+          {keyError ? (
+            <small className="error-message">{keyError}</small>
+          ) : (
+            <Textarea value={accountKey} />
+          )}
+          <Button
+            className="reveal-seed__confirm-button"
+            disabled={!accountKey}
+            onClick={copyAccountKey}
+            small
+          >
+            {keyCopied ? "Copied!" : "Copy Account Key"}
+          </Button>
+          <Button
+            className="reveal-seed__confirm-button"
+            onClick={closeKeyModal}
+            small
+          >
+            Close
+          </Button>
+        </Modal>
+      )}
       <SettingGroup
         name="Reveal Seedphrase"
         primaryBtnProps={{
@@ -427,6 +514,15 @@ function SecurityContent(): ReactElement {
         }}
       >
         <small>Reveal wallet seed phrase.</small>
+      </SettingGroup>
+      <SettingGroup
+        name="View Account Key"
+        primaryBtnProps={{
+          children: "View",
+          onClick: viewAccountKey,
+        }}
+      >
+        <small>View wallet account public key (xpub).</small>
       </SettingGroup>
       {/* <SettingGroup
         name="Analytics Opt-in"
@@ -437,6 +533,142 @@ function SecurityContent(): ReactElement {
       >
         <small>Send analytics to Aco to help improve Shake Wallet.</small>
       </SettingGroup> */}
+    </>
+  );
+}
+
+function SignMessageContent(): ReactElement {
+  const dispatch = useDispatch();
+  const names = useDomainNames(9999);
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
+  const [signature, setSignature] = useState("");
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchDomainNames());
+  }, []);
+
+  const nameOptions = [
+    {value: "", children: "Select a name…"},
+    ...names.map((n) => ({value: n, children: n})),
+  ];
+
+  const onSign = useCallback(async () => {
+    setError("");
+    setSignature("");
+    setCopied(false);
+    try {
+      const sig: any = await postMessage({
+        type: MessageTypes.SIGN_MESSAGE_WITH_NAME_DIRECT,
+        payload: {name, msg: message},
+      });
+      setSignature(sig || "");
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }, [name, message]);
+
+  const copySignature = useCallback(() => {
+    if (!signature) return;
+    copy(signature);
+    setCopied(true);
+  }, [signature]);
+
+  return (
+    <>
+      <SettingGroup
+        name="Select Name to Sign"
+        selectProps={{
+          value: name,
+          onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+            setName(e.target.value),
+          options: nameOptions,
+        }}
+      >
+        <small>Sign a message with the key that owns one of your names.</small>
+      </SettingGroup>
+      <Textarea
+        label="Message"
+        rows={5}
+        placeholder="Message to sign"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+      />
+      {error && <small className="error-message">{error}</small>}
+      <Button disabled={!name || !message} onClick={onSign}>
+        Sign Message
+      </Button>
+      {signature && (
+        <>
+          <Textarea label="Signature" rows={5} value={signature} readOnly />
+          <Button btnType={ButtonType.secondary} onClick={copySignature} small>
+            {copied ? "Copied!" : "Copy Signature"}
+          </Button>
+        </>
+      )}
+    </>
+  );
+}
+
+function VerifyMessageContent(): ReactElement {
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
+  const [signature, setSignature] = useState("");
+  const [result, setResult] = useState<boolean | null>(null);
+  const [error, setError] = useState("");
+
+  const onVerify = useCallback(async () => {
+    setError("");
+    setResult(null);
+    try {
+      const valid: any = await postMessage({
+        type: MessageTypes.VERIFY_MESSAGE_WITH_NAME,
+        payload: {msg: message, signature, name},
+      });
+      setResult(!!valid);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }, [message, signature, name]);
+
+  return (
+    <>
+      <Input
+        label="Name"
+        type="text"
+        placeholder="name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <Textarea
+        label="Message"
+        rows={5}
+        placeholder="Original message"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+      />
+      <Textarea
+        label="Signature"
+        rows={5}
+        placeholder="Base64 signature"
+        value={signature}
+        onChange={(e) => setSignature(e.target.value)}
+      />
+      {error && <small className="error-message">{error}</small>}
+      {result !== null &&
+        (result ? (
+          <small>✓ Signature is valid.</small>
+        ) : (
+          <small className="error-message">✗ Signature is invalid.</small>
+        ))}
+      <Button
+        disabled={!name || !message || !signature}
+        onClick={onVerify}
+      >
+        Verify Message
+      </Button>
     </>
   );
 }
@@ -465,6 +697,16 @@ function SettingsSelectContent(): ReactElement {
         name="Security &amp; Privacy"
         description="Privacy settings and wallet seed phrase"
         onClick={() => history.push("/settings/security")}
+      />
+      <SettingSelectGroup
+        name="Sign Message"
+        description="Sign a message with one of your names"
+        onClick={() => history.push("/settings/sign-message")}
+      />
+      <SettingSelectGroup
+        name="Verify Message"
+        description="Verify a signed message"
+        onClick={() => history.push("/settings/verify-message")}
       />
       <SettingSelectGroup
         name="About"

@@ -179,6 +179,19 @@ const controllers: {
     });
   },
 
+  // In-wallet signing (Settings UI): the user is already inside the wallet,
+  // so sign directly and return the signature instead of routing through the
+  // dApp confirmation popup.
+  [MessageTypes.SIGN_MESSAGE_WITH_NAME_DIRECT]: async (app, message) => {
+    const {name, msg} = message.payload;
+
+    app.exec('analytics', 'track', {
+      name: 'Shake Sign with Name',
+    });
+
+    return app.exec('wallet', 'signMessageWithName', name, msg);
+  },
+
   [MessageTypes.SEND_TX]: async (app, message) => {
     return new Promise(async (resolve, reject) => {
       try {

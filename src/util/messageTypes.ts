@@ -46,6 +46,7 @@ enum MessageTypes {
   SELECT_WALLET = "select_wallet",
   SIGN_MESSAGE = 'signMessage',
   SIGN_MESSAGE_WITH_NAME = 'signMessageWithName',
+  SIGN_MESSAGE_WITH_NAME_DIRECT = 'signMessageWithNameDirect',
   STOP_RESCAN = "stop_rescan",
   SUBMIT_TX = "submit_tx",
   UNLOCK_WALLET = "unlock_wallet",
