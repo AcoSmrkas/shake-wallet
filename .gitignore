@@ -6,6 +6,7 @@ dist/js
 dist/assets/*
 dist/wasm
 dist.zip
+dist-*.zip
 dist.crx
 dist.pem
 shake-wallet.zip
