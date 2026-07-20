@@ -549,24 +549,33 @@ class WalletService extends GenericService {
 
     const result = [];
 
-    // A broadcast-but-unconfirmed TRANSFER does not change the name's owner
-    // covenant, because hsd only updates namestate on confirmation. Collect
-    // those separately so the UI can reflect the transfer right away instead
-    // of showing the name as plainly registered until it lands in a block.
-    const pendingTransfers = new Set<string>();
+    // hsd only updates namestate on confirmation, so a broadcast-but-unmined
+    // covenant leaves the name looking untouched. Track the pending covenant
+    // per name so the UI can reflect it immediately and, more importantly,
+    // refuse a second action that would spend an already-spent name output.
+    // Note a cancelled transfer is an UPDATE covenant on-chain (hsd has no
+    // CANCEL type), so it is covered by the generic case.
+    const pendingCovenants = new Map<string, string>();
 
     try {
       const wtxs = await wallet.getPending();
 
       for (const wtx of wtxs) {
         for (const output of wtx.tx.outputs) {
-          if (output.covenant.type === types.TRANSFER) {
-            pendingTransfers.add(output.covenant.getHash(0).toString("hex"));
+          const {covenant} = output;
+
+          if (!covenant.isName()) {
+            continue;
           }
+
+          pendingCovenants.set(
+            covenant.getHash(0).toString("hex"),
+            typesByVal[covenant.type]
+          );
         }
       }
     } catch (e) {
-      console.error("Failed to read pending transfers:", e);
+      console.error("Failed to read pending name covenants:", e);
     }
 
     for (let i = 0; i < domains.length; i++) {
@@ -590,7 +599,7 @@ class WalletService extends GenericService {
         ...formatted,
         owned: !!coin,
         ownerCovenantType: typesByVal[coin.covenant.type],
-        pendingTransfer: pendingTransfers.has(formatted.nameHash),
+        pendingCovenant: pendingCovenants.get(formatted.nameHash),
       });
     }
 

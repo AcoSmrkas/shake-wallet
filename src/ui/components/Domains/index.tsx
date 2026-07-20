@@ -47,13 +47,26 @@ export function DomainRow(props: {name: string}): ReactElement {
   if (!domain) return <></>;
 
   const isTransferring = domain.ownerCovenantType === 'TRANSFER';
-  // Broadcast but not yet in a block, so the owner covenant still reads as
-  // registered.
-  const isPendingTransfer = !!domain.pendingTransfer && !isTransferring;
+  // An unconfirmed covenant tx for this name. The owner covenant still reads
+  // as it did before the tx was broadcast until it is mined.
+  const pendingCovenant = domain.pendingCovenant;
   const canFinalize =
     isTransferring &&
+    !pendingCovenant &&
     domain.transfer > 0 &&
     height >= domain.transfer + network.names.transferLockup;
+
+  let status = 'Registered';
+
+  if (pendingCovenant === 'TRANSFER') {
+    status = 'Transfer Pending';
+  } else if (pendingCovenant === 'FINALIZE') {
+    status = 'Finalizing';
+  } else if (pendingCovenant) {
+    status = 'Pending';
+  } else if (isTransferring) {
+    status = canFinalize ? 'Ready to Finalize' : 'Transfer Pending';
+  }
 
   const expiry = heightToMoment(domain.renewal + network.names.renewalWindow).format('YYYY-MM-DD');
 
@@ -70,16 +83,12 @@ export function DomainRow(props: {name: string}): ReactElement {
               <div
                 className={classNames("domain__info__name__status", {
                   "domain__info__name__status--pending":
-                    isPendingTransfer || (isTransferring && !canFinalize),
+                    status !== 'Registered' && status !== 'Ready to Finalize',
                   "domain__info__name__status--ready":
-                    isTransferring && canFinalize,
+                    status === 'Ready to Finalize',
                 })}
               >
-                {isTransferring
-                  ? (canFinalize ? 'Ready to Finalize' : 'Transfer Pending')
-                  : isPendingTransfer
-                    ? 'Transfer Pending'
-                    : 'Registered'}
+                {status}
               </div>
             )
           }

@@ -58,12 +58,16 @@ export default function DomainPage(): ReactElement {
   ).format("YYYY-MM-DD");
 
   const isTransferring = domain.ownerCovenantType === "TRANSFER";
-  // Broadcast but not yet mined, so the owner covenant still reads as
-  // registered and the transfer lockup has not started.
-  const isPendingTransfer = !!domain.pendingTransfer && !isTransferring;
+  // An unconfirmed covenant tx for this name. Every name action stays hidden
+  // until it is mined, otherwise a second tx would try to spend a name output
+  // the pending one already spends.
+  const pendingCovenant = domain.pendingCovenant;
   const finalizeHeight = domain.transfer + network.names.transferLockup;
   const canFinalize =
-    isTransferring && domain.transfer > 0 && height >= finalizeHeight;
+    isTransferring &&
+    !pendingCovenant &&
+    domain.transfer > 0 &&
+    height >= finalizeHeight;
   const blocksUntilFinalize = Math.max(0, finalizeHeight - height);
 
   return (
@@ -91,11 +95,11 @@ export default function DomainPage(): ReactElement {
             {domain?.ownerCovenantType === "REVEAL" && (
               <RegisterButton name={name} />
             )}
-            {!isPendingTransfer &&
+            {!pendingCovenant &&
               TRANSFERABLE_COVENANTS.includes(
                 domain?.ownerCovenantType || ""
               ) && <TransferButton name={name} />}
-            {isTransferring && (
+            {isTransferring && !pendingCovenant && (
               <>
                 <FinalizeButton
                   name={name}
@@ -111,12 +115,16 @@ export default function DomainPage(): ReactElement {
               {actionError}
             </div>
           )}
-          {isPendingTransfer && (
+          {pendingCovenant && (
             <div className="domain-page__header__content__lockup">
-              Transfer broadcast. Waiting for confirmation.
+              {pendingCovenant === "TRANSFER"
+                ? "Transfer broadcast. Waiting for confirmation."
+                : pendingCovenant === "FINALIZE"
+                ? "Finalize broadcast. Waiting for confirmation."
+                : "Pending transaction. Waiting for confirmation."}
             </div>
           )}
-          {isTransferring && !canFinalize && (
+          {isTransferring && !pendingCovenant && !canFinalize && (
             <div className="domain-page__header__content__lockup">
               {height < 0
                 ? "Transfer pending…"
@@ -125,9 +133,9 @@ export default function DomainPage(): ReactElement {
                   }`}
             </div>
           )}
-          {isTransferring && canFinalize && (
+          {isTransferring && !pendingCovenant && canFinalize && (
             <div className="domain-page__header__content__lockup">
-              Lockup complete — ready to finalize.
+              Lockup complete. Ready to finalize.
             </div>
           )}
         </div>
