@@ -22,6 +22,7 @@ import {
   RegularViewHeader,
 } from "@src/ui/components/RegularView";
 import UpdateTx from "@src/ui/pages/UpdateTx";
+import {useHistory} from "react-router";
 import "./confirm-tx.scss";
 
 const {Resource} = require("hsd/lib/dns/resource");
@@ -52,6 +53,7 @@ export default function ConfirmTx(): ReactElement {
   const [confirming, setConfirming] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const dispatch = useDispatch();
+  const history = useHistory();
 
   useEffect(() => {
     postMessage({
@@ -74,12 +76,16 @@ export default function ConfirmTx(): ReactElement {
         payload: {txJSON},
       });
       await dispatch(fetchPendingTransactions());
+
+      // Return to the main screen rather than the page the tx was started
+      // from, which cannot reflect the tx until it confirms.
+      history.push("/");
     } catch (e: any) {
       setErrorMessage(e.message);
     }
 
     setConfirming(false);
-  }, []);
+  }, [history]);
 
   const removeTx = useCallback((txJSON: Transaction|SignMessageRequest) => {
     return postMessage({
