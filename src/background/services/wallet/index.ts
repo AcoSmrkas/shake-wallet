@@ -549,6 +549,26 @@ class WalletService extends GenericService {
 
     const result = [];
 
+    // A broadcast-but-unconfirmed TRANSFER does not change the name's owner
+    // covenant, because hsd only updates namestate on confirmation. Collect
+    // those separately so the UI can reflect the transfer right away instead
+    // of showing the name as plainly registered until it lands in a block.
+    const pendingTransfers = new Set<string>();
+
+    try {
+      const wtxs = await wallet.getPending();
+
+      for (const wtx of wtxs) {
+        for (const output of wtx.tx.outputs) {
+          if (output.covenant.type === types.TRANSFER) {
+            pendingTransfers.add(output.covenant.getHash(0).toString("hex"));
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to read pending transfers:", e);
+    }
+
     for (let i = 0; i < domains.length; i++) {
       const domain = domains[i];
       const {owner} = domain;
@@ -564,10 +584,13 @@ class WalletService extends GenericService {
         continue;
       }
 
+      const formatted = domain.format(latestBlock?.height, this.network);
+
       result.push({
-        ...domain.format(latestBlock?.height, this.network),
+        ...formatted,
         owned: !!coin,
         ownerCovenantType: typesByVal[coin.covenant.type],
+        pendingTransfer: pendingTransfers.has(formatted.nameHash),
       });
     }
 

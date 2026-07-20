@@ -47,6 +47,9 @@ export function DomainRow(props: {name: string}): ReactElement {
   if (!domain) return <></>;
 
   const isTransferring = domain.ownerCovenantType === 'TRANSFER';
+  // Broadcast but not yet in a block, so the owner covenant still reads as
+  // registered.
+  const isPendingTransfer = !!domain.pendingTransfer && !isTransferring;
   const canFinalize =
     isTransferring &&
     domain.transfer > 0 &&
@@ -67,14 +70,16 @@ export function DomainRow(props: {name: string}): ReactElement {
               <div
                 className={classNames("domain__info__name__status", {
                   "domain__info__name__status--pending":
-                    isTransferring && !canFinalize,
+                    isPendingTransfer || (isTransferring && !canFinalize),
                   "domain__info__name__status--ready":
                     isTransferring && canFinalize,
                 })}
               >
                 {isTransferring
                   ? (canFinalize ? 'Ready to Finalize' : 'Transfer Pending')
-                  : 'Registered'}
+                  : isPendingTransfer
+                    ? 'Transfer Pending'
+                    : 'Registered'}
               </div>
             )
           }

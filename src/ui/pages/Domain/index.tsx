@@ -58,6 +58,9 @@ export default function DomainPage(): ReactElement {
   ).format("YYYY-MM-DD");
 
   const isTransferring = domain.ownerCovenantType === "TRANSFER";
+  // Broadcast but not yet mined, so the owner covenant still reads as
+  // registered and the transfer lockup has not started.
+  const isPendingTransfer = !!domain.pendingTransfer && !isTransferring;
   const finalizeHeight = domain.transfer + network.names.transferLockup;
   const canFinalize =
     isTransferring && domain.transfer > 0 && height >= finalizeHeight;
@@ -88,9 +91,10 @@ export default function DomainPage(): ReactElement {
             {domain?.ownerCovenantType === "REVEAL" && (
               <RegisterButton name={name} />
             )}
-            {TRANSFERABLE_COVENANTS.includes(
-              domain?.ownerCovenantType || ""
-            ) && <TransferButton name={name} />}
+            {!isPendingTransfer &&
+              TRANSFERABLE_COVENANTS.includes(
+                domain?.ownerCovenantType || ""
+              ) && <TransferButton name={name} />}
             {isTransferring && (
               <>
                 <FinalizeButton
@@ -105,6 +109,11 @@ export default function DomainPage(): ReactElement {
           {actionError && (
             <div className="domain-page__header__content__error">
               {actionError}
+            </div>
+          )}
+          {isPendingTransfer && (
+            <div className="domain-page__header__content__lockup">
+              Transfer broadcast. Waiting for confirmation.
             </div>
           )}
           {isTransferring && !canFinalize && (

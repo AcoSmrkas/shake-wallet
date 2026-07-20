@@ -50,6 +50,7 @@ type Domain = {
   weak: boolean;
   owned: boolean;
   ownerCovenantType?: string;
+  pendingTransfer?: boolean;
 }
 
 const initialState: State = {
