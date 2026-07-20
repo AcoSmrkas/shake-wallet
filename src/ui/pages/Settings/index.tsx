@@ -545,6 +545,8 @@ function SignMessageContent(): ReactElement {
   const [signature, setSignature] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [password, setPassword] = useState("");
+  const [needsPassword, setNeedsPassword] = useState(false);
 
   useEffect(() => {
     dispatch(fetchDomainNames());
@@ -562,13 +564,18 @@ function SignMessageContent(): ReactElement {
     try {
       const sig: any = await postMessage({
         type: MessageTypes.SIGN_MESSAGE_WITH_NAME_DIRECT,
-        payload: {name, msg: message},
+        payload: {name, msg: message, password: password || undefined},
       });
       setSignature(sig || "");
+      setNeedsPassword(false);
+      setPassword("");
     } catch (e: any) {
+      // Chrome tears down the background worker when idle, which drops the
+      // cached passphrase. Fall back to asking for the password.
+      if (!password) setNeedsPassword(true);
       setError(e.message);
     }
-  }, [name, message]);
+  }, [name, message, password]);
 
   const copySignature = useCallback(() => {
     if (!signature) return;
@@ -597,8 +604,20 @@ function SignMessageContent(): ReactElement {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
+        {needsPassword && (
+          <Input
+            label="Password"
+            type="password"
+            placeholder="Wallet password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        )}
         {error && <small className="error-message">{error}</small>}
-        <Button disabled={!name || !message} onClick={onSign}>
+        <Button
+          disabled={!name || !message || (needsPassword && !password)}
+          onClick={onSign}
+        >
           Sign Message
         </Button>
         {signature && (

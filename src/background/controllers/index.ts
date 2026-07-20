@@ -234,13 +234,13 @@ const controllers: {
   // so sign directly and return the signature instead of routing through the
   // dApp confirmation popup.
   [MessageTypes.SIGN_MESSAGE_WITH_NAME_DIRECT]: async (app, message) => {
-    const {name, msg} = message.payload;
+    const {name, msg, password} = message.payload;
 
     app.exec('analytics', 'track', {
       name: 'Shake Sign with Name',
     });
 
-    return app.exec('wallet', 'signMessageWithName', name, msg);
+    return app.exec('wallet', 'signMessageWithName', name, msg, password);
   },
 
   [MessageTypes.SEND_TX]: async (app, message) => {

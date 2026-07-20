@@ -1704,7 +1704,11 @@ class WalletService extends GenericService {
     throw new Error("name or address must be present");
   };
 
-  signMessage = async (address: string, msg: string): Promise<string> => {
+  signMessage = async (
+    address: string,
+    msg: string,
+    password?: string
+  ): Promise<string> => {
     if (!address || !msg) {
       throw new Error(
         "Requires parameters address of type string and msg of type string."
@@ -1714,8 +1718,16 @@ class WalletService extends GenericService {
     const walletId = this.selectedID;
     const wallet = await this.wdb.get(walletId);
 
+    // The cached passphrase lives only in the background worker's memory, which
+    // Chrome tears down when idle. Callers may pass the password explicitly.
+    const passphrase = password || this.passphrase;
+
+    if (!passphrase) {
+      throw new Error("Wallet is locked. Enter your password to sign.");
+    }
+
     try {
-      await wallet.unlock(this.passphrase, 60000);
+      await wallet.unlock(passphrase, 60000);
       const key = await wallet.getKey(Address.from(address));
 
       if (!key) {
@@ -1737,7 +1749,11 @@ class WalletService extends GenericService {
     }
   };
 
-  signMessageWithName = async (name: string, msg: string): Promise<string> => {
+  signMessageWithName = async (
+    name: string,
+    msg: string,
+    password?: string
+  ): Promise<string> => {
     if (!name || !msg) {
       throw new Error(
         "Requires parameters name of type string and msg of type string."
@@ -1749,8 +1765,14 @@ class WalletService extends GenericService {
     const walletId = this.selectedID;
     const wallet = await this.wdb.get(walletId);
 
+    const passphrase = password || this.passphrase;
+
+    if (!passphrase) {
+      throw new Error("Wallet is locked. Enter your password to sign.");
+    }
+
     try {
-      await wallet.unlock(this.passphrase, 60000);
+      await wallet.unlock(passphrase, 60000);
 
       const ns = await wallet.getNameStateByName(name);
 
@@ -1766,7 +1788,7 @@ class WalletService extends GenericService {
 
       const address = coin.address.toString(this.network);
 
-      return this.signMessage(address, msg);
+      return this.signMessage(address, msg, passphrase);
     } finally {
       await wallet.lock();
     }
