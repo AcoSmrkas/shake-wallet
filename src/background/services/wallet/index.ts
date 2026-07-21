@@ -1273,10 +1273,73 @@ class WalletService extends GenericService {
 
     if (!rules.verifyName(name)) throw new Error("Invalid name.");
 
-    const createdTx = await wallet.createFinalize(
-      name,
-      rate ? {rate} : undefined
+    // Reimplements hsd wallet.createFinalize. hsd's makeFinalize commits a
+    // renewal block via this.wdb.getRenewalBlock(), which reads a stored block
+    // entry the headless (RPC) walletdb does not have and asserts on. Build the
+    // covenant here and fetch the renewal block over RPC, like createRegister.
+    const rawName = Buffer.from(name, "ascii");
+    const nameHash = rules.hashName(rawName);
+    const ns = await wallet.getNameState(nameHash);
+    const height = this.wdb.height + 1;
+    const network = this.network;
+
+    if (!ns) throw new Error("Auction not found.");
+
+    const {hash, index} = ns.owner;
+    const coin = await wallet.getCoin(hash, index);
+
+    if (!coin) throw new Error(`Wallet does not own: "${name}".`);
+
+    if (ns.isExpired(height, network)) throw new Error("Name has expired!");
+
+    if (coin.height < ns.height)
+      throw new Error(`Wallet does not own: "${name}".`);
+
+    const state = ns.state(height, network);
+
+    if (state !== states.CLOSED) throw new Error("Auction is not yet closed.");
+
+    if (!coin.covenant.isTransfer())
+      throw new Error("Name is not being transferred.");
+
+    if (height < coin.height + network.names.transferLockup)
+      throw new Error("Transfer is still locked up.");
+
+    const version = coin.covenant.getU8(2);
+    const addr = coin.covenant.get(3);
+    const address = Address.fromHash(addr, version);
+
+    let flags = 0;
+    if (ns.weak) flags |= 1;
+
+    const output = new Output();
+    output.address = address;
+    output.value = coin.value;
+    output.covenant.type = types.FINALIZE;
+    output.covenant.pushHash(nameHash);
+    output.covenant.pushU32(ns.height);
+    output.covenant.push(rawName);
+    output.covenant.pushU8(flags);
+    output.covenant.pushU32(ns.claimed);
+    output.covenant.pushU32(ns.renewals);
+
+    let renewalHeight = height - network.names.renewalMaturity * 2;
+    if (renewalHeight < 0) renewalHeight = 0;
+
+    const renewalBlock = await this.exec(
+      "node",
+      "getBlockByHeight",
+      renewalHeight
     );
+
+    output.covenant.pushHash(Buffer.from(renewalBlock.hash, "hex"));
+
+    const mtx = new MTX();
+    mtx.addOutpoint(ns.owner);
+    mtx.outputs.push(output);
+
+    await wallet.fill(mtx, rate && {rate: rate});
+    const createdTx = await wallet.finalize(mtx);
     return createdTx.toJSON();
   };
 
