@@ -47,6 +47,8 @@ enum MessageTypes {
   REVEAL_SEED = "reveal_seed",
   SELECT_ACCOUNT = "select_account",
   SELECT_WALLET = "select_wallet",
+  RESET_WALLET = "reset_wallet",
+  REMOVE_WALLET = "remove_wallet",
   SIGN_MESSAGE = 'signMessage',
   SIGN_MESSAGE_WITH_NAME = 'signMessageWithName',
   SIGN_MESSAGE_WITH_NAME_DIRECT = 'signMessageWithNameDirect',

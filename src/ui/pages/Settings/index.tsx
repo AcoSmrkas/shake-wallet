@@ -18,7 +18,13 @@ import Input from "@src/ui/components/Input";
 import postMessage from "@src/util/postMessage";
 import MessageTypes from "@src/util/messageTypes";
 import Button, {ButtonProps, ButtonType} from "@src/ui/components/Button";
-import {selectAccount, useWalletState} from "@src/ui/ducks/wallet";
+import {
+  fetchWalletIDs,
+  fetchWallets,
+  fetchWalletState,
+  selectAccount,
+  useWalletState,
+} from "@src/ui/ducks/wallet";
 import {setMultiAccountsEnabled, useMultiAccountsEnabled} from "@src/ui/ducks/app";
 import Modal from "@src/ui/components/Modal";
 import Textarea from "@src/ui/components/Textarea";
@@ -315,34 +321,126 @@ function NetworkContent(): ReactElement {
 
 function WalletContent(): ReactElement {
   const {rescanning} = useWalletState();
+  const history = useHistory();
+  const dispatch = useDispatch();
+  const [isShowingResetModal, setShowingResetModal] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [isShowingRemoveModal, setShowingRemoveModal] = useState(false);
+  const [removeError, setRemoveError] = useState("");
+  const [removing, setRemoving] = useState(false);
 
-  const rescan = useCallback(() => {
-    if (rescanning) return;
+  const resetWallet = useCallback(async () => {
+    setResetting(true);
+    setResetError("");
+    try {
+      await postMessage({type: MessageTypes.RESET_WALLET});
+      // Kick off the rescan after the reset returns (doing it inside reset
+      // races with the wipe committing). Fire and forget; the home screen
+      // shows rescan progress.
+      postMessage({type: MessageTypes.FULL_RESCAN});
+      setShowingResetModal(false);
+      history.push("/");
+    } catch (e: any) {
+      setResetError(e.message);
+    }
+    setResetting(false);
+  }, [history]);
 
-    postMessage({
-      type: MessageTypes.FULL_RESCAN,
-    });
-  }, [rescanning]);
-
-  const stopRescan = useCallback(() => {
-    if (!rescanning) return;
-
-    postMessage({
-      type: MessageTypes.STOP_RESCAN,
-    });
-  }, [rescanning]);
+  const removeWallet = useCallback(async () => {
+    setRemoving(true);
+    setRemoveError("");
+    try {
+      await postMessage({type: MessageTypes.REMOVE_WALLET});
+      await dispatch(fetchWallets());
+      await dispatch(fetchWalletIDs());
+      await dispatch(fetchWalletState());
+      setShowingRemoveModal(false);
+      history.push("/");
+    } catch (e: any) {
+      setRemoveError(e.message);
+    }
+    setRemoving(false);
+  }, [dispatch, history]);
 
   return (
     <>
+      {isShowingResetModal && (
+        <Modal
+          className="confirm-modal reveal-seed"
+          onClose={() => !resetting && setShowingResetModal(false)}
+        >
+          <p>Reset wallet data</p>
+          <small>
+            This clears the extension's local transaction data and re-syncs from
+            the network. Your keys and funds are not affected. Use it if
+            balances or domains look wrong or stuck.
+          </small>
+          {resetError && (
+            <small className="error-message">{resetError}</small>
+          )}
+          <Button
+            className="reveal-seed__confirm-button"
+            btnType={ButtonType.secondary}
+            disabled={resetting}
+            onClick={resetWallet}
+            small
+          >
+            {resetting ? "Resetting…" : "Reset Wallet Data"}
+          </Button>
+        </Modal>
+      )}
       <SettingGroup
-        name="Rescan"
+        name="Reset"
         primaryBtnProps={{
-          children: rescanning ? "Stop Rescan" : "Rescan",
-          onClick: rescanning ? stopRescan : rescan,
-          // loading: rescanning,
+          children: "Reset",
+          onClick: () => {
+            setResetError("");
+            setShowingResetModal(true);
+          },
         }}
       >
-        <small>Perform a full rescan.</small>
+        <small>Clear local data and re-sync. Fixes stuck balances or domains.</small>
+      </SettingGroup>
+      {isShowingRemoveModal && (
+        <Modal
+          className="confirm-modal reveal-seed"
+          onClose={() => !removing && setShowingRemoveModal(false)}
+        >
+          <p>Remove wallet</p>
+          <small>
+            This deletes the wallet from this extension. Make sure your recovery
+            phrase is backed up — you can only restore it by re-importing the
+            seed.
+          </small>
+          {removeError && (
+            <small className="error-message">{removeError}</small>
+          )}
+          <Button
+            className="reveal-seed__confirm-button"
+            btnType={ButtonType.secondary}
+            disabled={removing}
+            onClick={removeWallet}
+            small
+          >
+            {removing ? "Removing…" : "Remove Wallet"}
+          </Button>
+        </Modal>
+      )}
+      <SettingGroup
+        name="Remove Wallet"
+        primaryBtnProps={{
+          children: "Remove",
+          onClick: () => {
+            setRemoveError("");
+            setShowingRemoveModal(true);
+          },
+        }}
+      >
+        <small>
+          Delete this wallet from the extension. You can restore it by
+          re-importing its recovery phrase.
+        </small>
       </SettingGroup>
     </>
   );

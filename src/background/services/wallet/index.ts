@@ -1,5 +1,5 @@
 import {GenericService} from "@src/util/svc";
-import {get, put} from "@src/util/db";
+import {get, put, del} from "@src/util/db";
 import pushMessage from "@src/util/pushMessage";
 import {
   LedgerHSD,
@@ -210,6 +210,175 @@ class WalletService extends GenericService {
 
   getWalletIDs = async (): Promise<string[]> => {
     return await this.wdb.getWallets();
+  };
+
+  resetWallet = async () => {
+    // Clear the local transaction index (coins, txs) and re-sync from the
+    // chain. hsd's per-wallet remove() does async DB reads inside an IndexedDB
+    // iterator, which throws "Iterator ended early" in the browser. wipe()'s
+    // iterator callback is synchronous, so it is browser-safe. With an empty
+    // index the rescan re-adds every tx via hsd's insert() path instead of the
+    // asserting confirm() path — which is what recovers a wallet whose own
+    // broadcast covenant tx got stuck unconfirmed.
+    await this.wdb.wipe();
+
+    this.transactions = null;
+    this.domains = null;
+
+    const ids = (await this.wdb.getWallets()).filter(
+      (w: string) => w !== "primary"
+    );
+
+    for (const id of ids) {
+      await del(this.store, `latest_block_${id}`);
+      await del(this.store, `tx_queue_${id}`);
+    }
+
+    // Clear any stale rescanning flag. The caller kicks off a fresh rescan
+    // once this returns (firing it here races with the wipe committing), which
+    // rebuilds the index via the insert path.
+    this.rescanning = false;
+    this.pushState();
+
+    return {ok: true};
+  };
+
+  // Browser-safe reimplementation of hsd's wdb.remove(). hsd deletes a wallet
+  // by doing async index cleanups inside IndexedDB cursors, which the browser
+  // aborts ("Iterator ended early"). Here every cursor is drained with a
+  // synchronous callback that only collects keys/hashes; the async map cleanups
+  // run afterwards, outside any open cursor. The whole thing is one batch that
+  // is written last, so a failure is atomic (nothing is removed).
+  removeWallet = async (id?: string) => {
+    const walletName = id || this.selectedID;
+
+    if (!walletName || walletName === "primary") {
+      throw new Error("Cannot remove this wallet.");
+    }
+
+    const wdb: any = this.wdb;
+    const layoutMod = require("hsd/lib/wallet/layout");
+    const wl = layoutMod.wdb;
+    const tl = layoutMod.txdb;
+
+    const wid = await wdb.ensureWID(walletName);
+    const stringId = wid !== -1 ? await wdb.getID(wid) : null;
+
+    if (wid === -1 || !stringId) {
+      throw new Error(`Cannot find wallet - ${walletName}`);
+    }
+    if (stringId === "primary") {
+      throw new Error("Cannot remove primary wallet.");
+    }
+
+    const unlock1 = await wdb.readLock.lock(wid);
+    const unlock2 = await wdb.writeLock.lock();
+    const unlock3 = await wdb.txLock.lock();
+
+    try {
+      const b = wdb.db.batch();
+
+      b.del(wl.w.encode(wid));
+      b.del(wl.W.encode(wid));
+      b.del(wl.l.encode(stringId));
+
+      // Paths — collect, then remove this wid from the global path map.
+      const pathHashes: any[] = [];
+      await wdb.db
+        .iterator({gte: wl.P.min(wid), lte: wl.P.max(wid)})
+        .each((key: Buffer) => {
+          const [, hash] = wl.P.decode(key);
+          b.del(key);
+          pathHashes.push(hash);
+        });
+      for (const hash of pathHashes) await wdb.removePathMap(b, hash, wid);
+
+      // Names — collect, then remove this wid from the global name map.
+      const nameHashes: any[] = [];
+      await wdb.db
+        .iterator({gte: wl.N.min(), lte: wl.N.max()})
+        .each((key: Buffer) => {
+          const [hash] = wl.N.decode(key);
+          nameHashes.push(hash);
+        });
+      for (const hash of nameHashes) await wdb.removeNameMap(b, hash, wid);
+
+      // Plain per-wid ranges (safe to delete inside the cursor: no await).
+      const removeRange = async (opt: any) => {
+        await wdb.db.iterator(opt).each((key: Buffer) => b.del(key));
+      };
+      await removeRange({gte: wl.r.min(wid), lte: wl.r.max(wid)});
+      await removeRange({gte: wl.a.min(wid), lte: wl.a.max(wid)});
+      await removeRange({gte: wl.i.min(wid), lte: wl.i.max(wid)});
+      await removeRange({gte: wl.n.min(wid), lte: wl.n.max(wid)});
+      await removeRange({gt: wl.t.encode(wid), lt: wl.t.encode(wid + 1)});
+
+      // TXDB bucket: block map, spent-outpoint map, tx map.
+      const bucket = wdb.db.bucket(wl.t.encode(wid));
+
+      const blockHeights: number[] = [];
+      await bucket
+        .iterator({gte: tl.b.min(), lte: tl.b.max()})
+        .each((key: Buffer) => {
+          const [height] = tl.b.decode(key);
+          blockHeights.push(height);
+        });
+      for (const height of blockHeights)
+        await wdb.removeBlockMap(b, height, wid);
+
+      const outpoints: any[] = [];
+      await bucket
+        .iterator({gte: tl.s.min(), lte: tl.s.max(), keys: true})
+        .each((key: Buffer) => {
+          const [hash, index] = tl.s.decode(key);
+          outpoints.push([hash, index]);
+        });
+      for (const [hash, index] of outpoints)
+        await wdb.removeOutpointMap(b, hash, index, wid);
+
+      const txHashes: any[] = [];
+      await bucket
+        .iterator({gte: tl.p.min(), lte: tl.p.max(), keys: true})
+        .each((key: Buffer) => {
+          const [hash] = tl.p.decode(key);
+          txHashes.push(hash);
+        });
+      for (const hash of txHashes) await wdb.removeTXMap(b, hash, wid);
+
+      const wallet = wdb.wallets.get(wid);
+      if (wallet) {
+        await wallet.destroy();
+        wdb.unregister(wallet);
+      }
+
+      await b.write();
+    } finally {
+      unlock3();
+      unlock2();
+      unlock1();
+    }
+
+    // Drop the extension's cached per-wallet data.
+    this.transactions = null;
+    this.domains = null;
+    await del(this.store, `latest_block_${walletName}`);
+    await del(this.store, `tx_queue_${walletName}`);
+
+    // Select another wallet if one remains, otherwise clear the selection so
+    // the app returns to onboarding.
+    const remaining = (await wdb.getWallets()).filter(
+      (w: string) => w !== "primary"
+    );
+
+    if (remaining.length) {
+      await this.selectWallet(remaining[0]);
+    } else {
+      this.selectedID = "";
+      this.locked = true;
+      this.emit("locked");
+    }
+
+    return {removed: walletName, selectedID: this.selectedID};
   };
 
   getWalletsInfo = async () => {
@@ -1667,7 +1836,13 @@ class WalletService extends GenericService {
 
     await this.pushShakeMessage(`Found ${transactions.length} transaction.`);
 
-    let retries = 0;
+    // Bound retries PER transaction. The previous single counter reset on any
+    // success, so backing up 2 and re-inserting the earlier txs reset it too,
+    // letting a tx that can never be inserted (e.g. a covenant whose parent
+    // coin is unconfirmed in this wallet) wedge the whole sync in an endless
+    // back-up-and-retry loop.
+    const attempts: {[index: number]: number} = {};
+    const MAX_TX_ATTEMPTS = 25;
     for (let i = 0; i < transactions.length; i++) {
       if (this.forceStopRescan) {
         this.forceStopRescan = false;
@@ -1721,15 +1896,20 @@ class WalletService extends GenericService {
         });
         
         await this.wdb._addTX(tx, entry);
-
-        retries = 0;
       } catch (e) {
-        retries++;
-        
+        attempts[i] = (attempts[i] || 0) + 1;
+
         await new Promise((r) => setTimeout(r, 10));
 
-        if (retries > 10000) {
-          throw e;
+        if (attempts[i] > MAX_TX_ATTEMPTS) {
+          // Give up on this one so the rest of the sync can finish rather than
+          // spinning forever. Missing it is recoverable on a later rescan.
+          console.error(
+            `Skipping TX ${i} (${transactions[i]?.hash}) after ` +
+              `${attempts[i]} attempts:`,
+            e
+          );
+          continue;
         }
 
         i = Math.max(i - 2, 0);
@@ -2038,7 +2218,10 @@ class WalletService extends GenericService {
     );
 
     await this.pushShakeMessage(`Processing block # ${entryOption.height}....`);
-    let retries = 0;
+    // Per-tx retry bound (see insertTransactions) so a tx that can never be
+    // inserted cannot wedge block processing in an endless retry loop.
+    const attempts: {[index: number]: number} = {};
+    const MAX_TX_ATTEMPTS = 25;
 
     for (let i = 0; i < transactions.length; i++) {
       const unlock = await this.wdb.txLock.lock();
@@ -2068,13 +2251,16 @@ class WalletService extends GenericService {
         });
 
         await this.wdb._addTX(tx, entry);
-
-        retries = 0;
       } catch (e) {
-        retries++;
+        attempts[i] = (attempts[i] || 0) + 1;
         await new Promise((r) => setTimeout(r, 10));
-        if (retries > 10000) {
-          throw e;
+        if (attempts[i] > MAX_TX_ATTEMPTS) {
+          console.error(
+            `Skipping TX ${i} (${transactions[i]?.hash}) after ` +
+              `${attempts[i]} attempts:`,
+            e
+          );
+          continue;
         }
         i = Math.max(i - 2, 0);
       } finally {

@@ -466,6 +466,14 @@ const controllers: {
     return app.exec("wallet", "selectWallet", message.payload);
   },
 
+  [MessageTypes.RESET_WALLET]: async (app, message) => {
+    return app.exec("wallet", "resetWallet");
+  },
+
+  [MessageTypes.REMOVE_WALLET]: async (app, message) => {
+    return app.exec("wallet", "removeWallet", message.payload?.id);
+  },
+
   [MessageTypes.GENERATE_NEW_MNEMONIC]: async (app, message) => {
     return app.exec("wallet", "generateNewMnemonic");
   },
