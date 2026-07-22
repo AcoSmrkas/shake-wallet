@@ -53,15 +53,17 @@ export default class NodeService extends GenericService {
     // Only {hash, height, time} is needed here. Resolving the tip via
     // getBlockByHeight fetches the ENTIRE block (~1.4MB, 5-20s) on every poll,
     // which stalls the block number, activity and domains — all of which await
-    // getLatestBlock. The block header carries the exact time for ~1KB/0.5s.
+    // getLatestBlock. getBlockEntry hits the lightweight, cached header
+    // endpoint (~1KB), which carries the exact block time. (The getblockheader
+    // RPC is not exposed by every API host and 404s.)
     let time = result.mediantime;
     try {
-      const header = await this.getBlockHeader(hash);
-      if (header?.result?.time != null) {
-        time = header.result.time;
+      const entry = await this.getBlockEntry(height);
+      if (entry?.time != null) {
+        time = entry.time;
       }
     } catch (e) {
-      console.error("getBlockHeader failed; using mediantime.", e);
+      console.error("getBlockEntry failed; using mediantime.", e);
     }
 
     return {
@@ -80,19 +82,6 @@ export default class NodeService extends GenericService {
       body: JSON.stringify({
         method: "getblockchaininfo",
         params: [],
-      }),
-    });
-  }
-
-  async getBlockHeader(hash: string) {
-    const headers = await this.getHeaders();
-
-    return this.fetch(null, {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify({
-        method: "getblockheader",
-        params: [hash, true],
       }),
     });
   }
@@ -315,17 +304,20 @@ export default class NodeService extends GenericService {
     const resp = await fetch(path ? `${apiHost}/${path}` : apiHost, init);
 
     if (resp.status !== 200) {
-      console.error(`Bad response code ${resp.status}.`);
-
+      // Read the body as text: error responses are often plain text (e.g. a
+      // 404 "Not Found"), and calling resp.json() on that throws an uncaught
+      // SyntaxError.
+      let body = "";
       try {
-        const json = resp.json();
-        console.error("Body JSON:", json);
+        body = await resp.text();
       } catch (e) {
-        console.error("Error printing body JSON.");
+        // ignore — nothing more we can surface about the failure
       }
 
+      console.error(`Bad response code ${resp.status}.`, body);
+
       throw new Error(
-        `Non-200 status code: ${resp.status}. Check the logs for more details.`
+        `Non-200 status code: ${resp.status}. ${body}`.trim()
       );
     }
 
