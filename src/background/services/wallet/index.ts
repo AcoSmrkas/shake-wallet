@@ -1895,6 +1895,14 @@ class WalletService extends GenericService {
             entryOption.chainwork && BN.from(entryOption.chainwork, 16, "be"),
         });
         
+        // If the wallet already holds this tx unconfirmed (it broadcast it),
+        // drop it so the confirmed re-add takes hsd's insert path instead of
+        // confirm(), which asserts on an input spent while unconfirmed (our own
+        // finalize/transfer). txdb.remove is browser-safe.
+        if (wtx) {
+          await wallet.remove(Buffer.from(transactions[i].hash, "hex"));
+        }
+
         await this.wdb._addTX(tx, entry);
       } catch (e) {
         attempts[i] = (attempts[i] || 0) + 1;
@@ -2249,6 +2257,14 @@ class WalletService extends GenericService {
           chainwork:
             entryOption.chainwork && BN.from(entryOption.chainwork, 16, "be"),
         });
+
+        // If the wallet already holds this tx unconfirmed (it broadcast it),
+        // drop it so the confirmed re-add takes hsd's insert path instead of
+        // confirm(), which asserts on an input spent while unconfirmed (our own
+        // finalize/transfer). txdb.remove is browser-safe.
+        if (wtx) {
+          await wallet.remove(Buffer.from(transactions[i].hash, "hex"));
+        }
 
         await this.wdb._addTX(tx, entry);
       } catch (e) {
