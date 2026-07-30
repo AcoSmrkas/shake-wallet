@@ -40,6 +40,7 @@ const actionToTitle: {
   REDEEM: "Confirm Redeem",
   REGISTER: "Confirm Register",
   UPDATE: "Confirm Update",
+  RENEW: "Confirm Renewal",
   TRANSFER: "Confirm Transfer",
   FINALIZE: "Confirm Finalize"
 };
@@ -207,6 +208,7 @@ function NetTotal(props: {hash: string}): ReactElement {
     case "BID":
     case "OPEN":
     case "UPDATE":
+    case "RENEW":
     case "SEND":
     default:
       return (
@@ -385,6 +387,7 @@ function ConfirmContent(props: {hash: string}): ReactElement {
     case "REVEAL":
     case "REDEEM":
     case "OPEN":
+    case "RENEW":
       return (
         <>
           <Input label="TLD" value={name} spellCheck={false} disabled />

@@ -685,10 +685,38 @@ class WalletService extends GenericService {
       owner.index
     );
 
+    // Match the pending-covenant detection used by getDomainNames so the domain
+    // page can hide name actions while an unconfirmed covenant (e.g. a broadcast
+    // renewal or transfer) is still in the mempool.
+    let pendingCovenant: string | undefined;
+    try {
+      const nameHash = rules
+        .hashName(Buffer.from(name, "ascii"))
+        .toString("hex");
+      const wtxs = await wallet.getPending();
+
+      for (const wtx of wtxs) {
+        for (const output of wtx.tx.outputs) {
+          const {covenant} = output;
+
+          if (!covenant.isName()) {
+            continue;
+          }
+
+          if (covenant.getHash(0).toString("hex") === nameHash) {
+            pendingCovenant = typesByVal[covenant.type];
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to read pending name covenants:", e);
+    }
+
     return {
       ...info,
       owned: !!coin,
       ownerCovenantType: typesByVal[coin?.covenant.type],
+      pendingCovenant,
     };
   };
 
@@ -1491,6 +1519,83 @@ class WalletService extends GenericService {
     output.covenant.pushU8(flags);
     output.covenant.pushU32(ns.claimed);
     output.covenant.pushU32(ns.renewals);
+
+    let renewalHeight = height - network.names.renewalMaturity * 2;
+    if (renewalHeight < 0) renewalHeight = 0;
+
+    const renewalBlock = await this.exec(
+      "node",
+      "getBlockByHeight",
+      renewalHeight
+    );
+
+    output.covenant.pushHash(Buffer.from(renewalBlock.hash, "hex"));
+
+    const mtx = new MTX();
+    mtx.addOutpoint(ns.owner);
+    mtx.outputs.push(output);
+
+    await wallet.fill(mtx, rate && {rate: rate});
+    const createdTx = await wallet.finalize(mtx);
+    return createdTx.toJSON();
+  };
+
+  createRenew = async (opts: {name: string; rate?: number}) => {
+    const {name, rate} = opts;
+    const walletId = this.selectedID;
+    const wallet = await this.wdb.get(walletId);
+    const latestBlockNow = await this.exec("node", "getLatestBlock");
+    this.wdb.height = latestBlockNow.height;
+
+    await this.addNameState(name);
+
+    if (!rules.verifyName(name)) throw new Error("Invalid name.");
+
+    // Reimplements hsd wallet.makeRenewal. hsd commits the renewal block via
+    // this.wdb.getRenewalBlock(), which reads a stored block entry the headless
+    // (RPC) walletdb does not have and asserts on. Build the covenant here and
+    // fetch the renewal block over RPC, like createRegister/createFinalize.
+    const rawName = Buffer.from(name, "ascii");
+    const nameHash = rules.hashName(rawName);
+    const ns = await wallet.getNameState(nameHash);
+    const height = this.wdb.height + 1;
+    const network = this.network;
+
+    if (!ns) throw new Error("Auction not found.");
+
+    const {hash, index} = ns.owner;
+    const coin = await wallet.getCoin(hash, index);
+
+    if (!coin) throw new Error(`Wallet does not own: "${name}".`);
+
+    if (ns.isExpired(height, network)) throw new Error("Name has expired!");
+
+    // Is local?
+    if (coin.height < ns.height)
+      throw new Error(`Wallet does not own: "${name}".`);
+
+    const state = ns.state(height, network);
+
+    if (state !== states.CLOSED) throw new Error("Auction is not yet closed.");
+
+    if (
+      !coin.covenant.isRegister() &&
+      !coin.covenant.isUpdate() &&
+      !coin.covenant.isRenew() &&
+      !coin.covenant.isFinalize()
+    ) {
+      throw new Error("Name must be registered.");
+    }
+
+    if (height < ns.renewal + network.names.treeInterval)
+      throw new Error("Must wait to renew.");
+
+    const output = new Output();
+    output.address = coin.address;
+    output.value = coin.value;
+    output.covenant.type = types.RENEW;
+    output.covenant.pushHash(nameHash);
+    output.covenant.pushU32(ns.height);
 
     let renewalHeight = height - network.names.renewalMaturity * 2;
     if (renewalHeight < 0) renewalHeight = 0;

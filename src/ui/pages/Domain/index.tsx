@@ -9,6 +9,7 @@ import {useDispatch} from "react-redux";
 import {
   RedeemButton,
   RegisterButton,
+  RenewButton,
   TransferButton,
   FinalizeButton,
   CancelTransferButton,
@@ -21,6 +22,9 @@ const networkType = process.env.NETWORK_TYPE || "main";
 
 // Covenant states from which a settled, owned name can be transferred.
 const TRANSFERABLE_COVENANTS = ["REGISTER", "UPDATE", "RENEW", "FINALIZE"];
+// Covenant states from which an owned name can be renewed (same set hsd's
+// wallet.makeRenewal accepts).
+const RENEWABLE_COVENANTS = ["REGISTER", "UPDATE", "RENEW", "FINALIZE"];
 
 export default function DomainPage(): ReactElement {
   const {name} = useParams<{name: string}>();
@@ -70,6 +74,15 @@ export default function DomainPage(): ReactElement {
     height >= finalizeHeight;
   const blocksUntilFinalize = Math.max(0, finalizeHeight - height);
 
+  // Renew: hsd requires waiting one tree interval past the last renewal or
+  // registration before a name can be renewed again.
+  const isRenewable =
+    !pendingCovenant &&
+    RENEWABLE_COVENANTS.includes(domain?.ownerCovenantType || "");
+  const renewReadyHeight = domain.renewal + network.names.treeInterval;
+  const canRenew = height > 0 && height >= renewReadyHeight;
+  const blocksUntilRenew = Math.max(0, renewReadyHeight - height);
+
   return (
     <div className="domain-page">
       <div className="domain-page__header">
@@ -94,6 +107,13 @@ export default function DomainPage(): ReactElement {
             {!domain?.ownerCovenantType && <RedeemButton name={name} />}
             {domain?.ownerCovenantType === "REVEAL" && (
               <RegisterButton name={name} />
+            )}
+            {isRenewable && (
+              <RenewButton
+                name={name}
+                disabled={!canRenew}
+                onError={setActionError}
+              />
             )}
             {!pendingCovenant &&
               TRANSFERABLE_COVENANTS.includes(
@@ -121,7 +141,18 @@ export default function DomainPage(): ReactElement {
                 ? "Transfer broadcast. Waiting for confirmation."
                 : pendingCovenant === "FINALIZE"
                 ? "Finalize broadcast. Waiting for confirmation."
+                : pendingCovenant === "RENEW"
+                ? "Renewal broadcast. Waiting for confirmation."
                 : "Pending transaction. Waiting for confirmation."}
+            </div>
+          )}
+          {isRenewable && !canRenew && (
+            <div className="domain-page__header__content__lockup">
+              {height <= 0
+                ? "Loading…"
+                : `Renew available in ${blocksUntilRenew} block${
+                    blocksUntilRenew === 1 ? "" : "s"
+                  }`}
             </div>
           )}
           {isTransferring && !pendingCovenant && !canFinalize && (

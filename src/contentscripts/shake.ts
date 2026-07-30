@@ -139,6 +139,23 @@ async function sendUpdate(name: string, records: UpdateRecordType[]) {
 }
 
 /**
+ * Renew a domain you own.
+ * Resets the name's expiry by committing to a recent block hash. hsd requires
+ * waiting one tree interval (~36 blocks on mainnet) after the last renewal or
+ * registration before a name can be renewed again.
+ * @param name - name to renew
+ */
+async function sendRenewal(name: string) {
+  await assertunLocked();
+  return post({
+    type: MessageTypes.SEND_RENEW,
+    payload: {
+      name,
+    },
+  });
+}
+
+/**
  * Send a domain transfer (step 1 of 2).
  * Announces the transfer of a name you own to a recipient address and starts
  * the transfer lockup (~2 days / 288 blocks on mainnet). After the lockup you
@@ -349,6 +366,9 @@ const wallet = {
   sendReveal,
   sendRedeem,
   sendUpdate,
+  sendRenewal,
+  // Alias matching Bob Wallet / hsd RPC naming so dApps written "like on Bob" bind.
+  sendRenew: sendRenewal,
   sendTransfer,
   finalizeTransfer,
   cancelTransfer,

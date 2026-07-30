@@ -178,14 +178,36 @@ export function RegisterButton(props: { name: string }): ReactElement {
   )
 }
 
-export function RenewButton(): ReactElement {
+export function RenewButton(props: { name: string; disabled?: boolean; onError?: (msg: string) => void }): ReactElement {
+  const sendTx = useCallback(async () => {
+    props.onError?.("");
+    try {
+      const tx = await postMessage({
+        type: MessageTypes.CREATE_RENEW,
+        payload: { name: props.name },
+      });
+
+      if (!tx) {
+        return;
+      }
+
+      await postMessage({
+        type: MessageTypes.ADD_TX_QUEUE,
+        payload: tx,
+      });
+    } catch (e: any) {
+      console.log(e);
+      props.onError?.(e?.message || "Failed to renew domain.");
+    }
+  }, [props.name, props.onError]);
 
   return (
     <HomeActionButton
       color="green"
       text="Renew"
       fontAwesome="fa-undo"
-      onClick={() => null}
+      onClick={props.disabled ? () => null : sendTx}
+      disabled={props.disabled}
     />
   )
 }

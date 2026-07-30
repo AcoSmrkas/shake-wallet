@@ -77,6 +77,15 @@ const controllers: {
 
         await app.exec("wallet", "addTxToQueue", tx);
         break;
+      case 'renew':
+        app.exec("analytics", "track", {
+          name: "Shake Renew",
+        });
+
+        tx = await app.exec("wallet", "createRenew", payload);
+
+        await app.exec("wallet", "addTxToQueue", tx);
+        break;
       case 'redeem':
         app.exec("analytics", "track", {
           name: "Shake Redeem",
@@ -362,6 +371,27 @@ const controllers: {
         }
 
         pendingPopupRequest = { type: 'redeem', payload: message.payload, resolve, reject };
+        await openPopup();
+      } catch (e) {
+        reject(e);
+      }
+    });
+  },
+
+  [MessageTypes.SEND_RENEW]: async (app, message) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const queue = await app.exec("wallet", "getTxQueue");
+
+        if (queue.length) {
+          return reject(new Error("user has unconfirmed tx."));
+        }
+
+        if (pendingPopupRequest !== null) {
+          return reject(new Error("Another transaction is already pending confirmation."));
+        }
+
+        pendingPopupRequest = { type: 'renew', payload: message.payload, resolve, reject };
         await openPopup();
       } catch (e) {
         reject(e);
@@ -677,6 +707,10 @@ const controllers: {
 
   [MessageTypes.CREATE_REDEEM]: async (app, message) => {
     return app.exec("wallet", "createRedeem", message.payload);
+  },
+
+  [MessageTypes.CREATE_RENEW]: async (app, message) => {
+    return app.exec("wallet", "createRenew", message.payload);
   },
 
   [MessageTypes.CREATE_UPDATE]: async (app, message) => {
