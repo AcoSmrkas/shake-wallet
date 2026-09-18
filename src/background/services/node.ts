@@ -250,16 +250,17 @@ export default class NodeService extends GenericService {
     return blockEntry;
   }
 
+  // hsd returns every matching tx in one flat array and ignores the block
+  // range, so there is nothing to page through. startBlock/endBlock are still
+  // sent for hosts that do honour them.
   async getTXByAddresses(
     addresses: string[],
     startBlock: number,
-    endBlock: number,
-    transactions: any[] = []
+    endBlock: number
   ): Promise<any[]> {
     const headers = await this.getHeaders();
-    const {apiHost} = await this.exec("setting", "getAPI");
 
-    const resp = await fetch(`${apiHost}/tx/address`, {
+    return this.fetch("tx/address", {
       method: "POST",
       headers: headers,
       body: JSON.stringify({
@@ -268,27 +269,6 @@ export default class NodeService extends GenericService {
         endBlock,
       }),
     });
-
-    const json = await resp.json();
-
-    if (apiHost.includes("api.handshakeapi.com")) {
-      if (resp.status === 200 && endBlock === json.endBlock) {
-        return transactions.concat(json.txs);
-      }
-
-      if (resp.status === 413) {
-        return this.getTXByAddresses(
-          addresses,
-          json.endBlock,
-          endBlock,
-          transactions.concat(json.txs)
-        );
-      }
-
-      throw new Error(`Unknown response status: ${resp.status}`);
-    } else {
-      return json;
-    }
   }
 
   async start() {

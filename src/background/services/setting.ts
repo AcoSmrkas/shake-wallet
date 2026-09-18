@@ -11,7 +11,7 @@ const MULTI_ACCOUNTS_ENABLED_KEY = "multi_accounts_enabled_key";
 const EXPLORER_KEY = "explorer_key";
 
 const DEFAULT_HOST =
-  process.env.DEFAULT_HOST || "https://api.handshakeapi.com/hsd";
+  process.env.DEFAULT_HOST || "https://hsd.ergexplorer.com";
 const DEFAULT_API_KEY = process.env.DEFAULT_API_KEY || "";
 
 declare interface SettingService {
