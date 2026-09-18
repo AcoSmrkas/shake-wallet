@@ -6,13 +6,22 @@ import {type Explorer, EXPLORERS} from "@src/util/explorer";
 
 const RPC_HOST_DB_KEY = "rpc_host";
 const RPC_API_KEY_DB_KEY = "rpc_api_key";
+const ASSIGNED_HOST_DB_KEY = "assigned_default_host";
 const ANALYTICS_OPT_IN_KEY = "analytics_opt_in_key";
 const MULTI_ACCOUNTS_ENABLED_KEY = "multi_accounts_enabled_key";
 const EXPLORER_KEY = "explorer_key";
 
-const DEFAULT_HOST =
-  process.env.DEFAULT_HOST || "https://hsd.ergexplorer.com";
+// Community-hosted nodes we ship as defaults. One is assigned per install to
+// spread load; the choice is sticky so a rescan cannot straddle two hosts with
+// differing index state. Each must serve every RPC method and REST route the
+// wallet calls — verify with scripts/check-hsd-host.sh before adding one.
+const DEFAULT_HOSTS = process.env.DEFAULT_HOST
+  ? [process.env.DEFAULT_HOST]
+  : ["https://hsd.ergexplorer.com", "https://hns-sw.spaghettinode.com"];
 const DEFAULT_API_KEY = process.env.DEFAULT_API_KEY || "";
+
+const pick = (hosts: string[]) =>
+  hosts[Math.floor(Math.random() * hosts.length)];
 
 declare interface SettingService {
   apiHost: string;
@@ -28,13 +37,39 @@ class SettingService extends GenericService {
     this.apiKey = "";
   }
 
+  // The host assigned to this install, kept in its own key so it stays
+  // distinguishable from a host the user picked. Re-picks when the stored one
+  // is no longer shipped, which is how an install leaves a retired host.
+  getAssignedHost = async (): Promise<string> => {
+    const assigned = await get(this.store, ASSIGNED_HOST_DB_KEY);
+    if (assigned && DEFAULT_HOSTS.includes(assigned)) return assigned;
+
+    const picked = pick(DEFAULT_HOSTS);
+    await put(this.store, ASSIGNED_HOST_DB_KEY, picked);
+    return picked;
+  };
+
+  // Called after the assigned host fails. Never called for a user's own RPC
+  // URL: silently moving those requests elsewhere would hand their addresses
+  // to a node they did not choose. Returns null when nothing else is left.
+  rotateAssignedHost = async (failed: string): Promise<string | null> => {
+    const alternatives = DEFAULT_HOSTS.filter((host) => host !== failed);
+    if (!alternatives.length) return null;
+
+    const picked = pick(alternatives);
+    await put(this.store, ASSIGNED_HOST_DB_KEY, picked);
+    return picked;
+  };
+
   getAPI = async () => {
-    const apiHost = this.apiHost || (await get(this.store, RPC_HOST_DB_KEY));
+    const userHost = this.apiHost || (await get(this.store, RPC_HOST_DB_KEY));
     const apiKey = this.apiKey || (await get(this.store, RPC_API_KEY_DB_KEY));
 
     return {
-      apiHost: apiHost || DEFAULT_HOST,
+      apiHost: userHost || (await this.getAssignedHost()),
       apiKey: apiKey || DEFAULT_API_KEY,
+      // Only a host we assigned may be swapped out from under a request.
+      canFailover: !userHost,
     };
   };
 
@@ -84,9 +119,10 @@ class SettingService extends GenericService {
   async start() {
     this.store = bdb.create("/setting-store");
     await this.store.open();
-    const {apiKey, apiHost} = await this.getAPI();
-    this.apiKey = apiKey;
-    this.apiHost = apiHost;
+    // Cache the user's own choice only. Caching a resolved default here would
+    // make it indistinguishable from one, and block failover.
+    this.apiHost = (await get(this.store, RPC_HOST_DB_KEY)) || "";
+    this.apiKey = (await get(this.store, RPC_API_KEY_DB_KEY)) || "";
   }
 
   async stop() {}

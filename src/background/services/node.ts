@@ -279,9 +279,37 @@ export default class NodeService extends GenericService {
 
   async stop() {}
 
-  async fetch(path: string | null, init: RequestInit): Promise<any> {
-    const {apiHost} = await this.exec("setting", "getAPI");
-    const resp = await fetch(path ? `${apiHost}/${path}` : apiHost, init);
+  // Retried once on a different shipped host when the assigned one looks down.
+  // Only unreachable and 5xx count: a 4xx is the request's problem (a spent
+  // coin 404s legitimately), and retrying those elsewhere would just double
+  // every such call.
+  async fetch(
+    path: string | null,
+    init: RequestInit,
+    canRetry = true
+  ): Promise<any> {
+    const {apiHost, canFailover} = await this.exec("setting", "getAPI");
+
+    // Resolves to the host to retry on, or null to give up. Kept separate from
+    // the retry itself so a response that is legitimately null cannot be
+    // mistaken for "no failover happened".
+    const nextHost = async (reason: string): Promise<string | null> => {
+      if (!canRetry || !canFailover) return null;
+
+      const next = await this.exec("setting", "rotateAssignedHost", apiHost);
+      if (next) console.error(`${apiHost} ${reason}; retrying on ${next}.`);
+      return next;
+    };
+
+    let resp;
+    try {
+      resp = await fetch(path ? `${apiHost}/${path}` : apiHost, init);
+    } catch (e) {
+      if (await nextHost("is unreachable")) {
+        return this.fetch(path, init, false);
+      }
+      throw e;
+    }
 
     if (resp.status !== 200) {
       // Read the body as text: error responses are often plain text (e.g. a
@@ -292,6 +320,10 @@ export default class NodeService extends GenericService {
         body = await resp.text();
       } catch (e) {
         // ignore — nothing more we can surface about the failure
+      }
+
+      if (resp.status >= 500 && (await nextHost(`returned ${resp.status}`))) {
+        return this.fetch(path, init, false);
       }
 
       console.error(`Bad response code ${resp.status}.`, body);
