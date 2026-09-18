@@ -84,10 +84,32 @@ else
   done
   r W "GET  /coin/:hash/:index" "$code"
 
+  # The sampled address may carry a very large history, in which case the host
+  # times out building the response. That reflects the address, not the host, so
+  # it is a warning with a hint rather than a failure.
   body='{"addresses":["'"$AD"'"]}'
-  r W "POST /tx/address" "$(curl -s -o /dev/null -w '%{http_code}' -m 120 -X POST "$HOST/tx/address" -H "$JSON" "${A[@]}" -d "$body")"
+  code=$(curl -s -o /dev/null -w '%{http_code}' -m 120 -X POST "$HOST/tx/address" -H "$JSON" "${A[@]}" -d "$body")
+  case "$code" in
+    504|502|000) echo "WARN  [W] POST /tx/address  ($code - sampled address has a large history; raise the proxy response timeout)";;
+    *) r W "POST /tx/address" "$code";;
+  esac
   r R "GET  /coin/address/:addr" "$(curl -s -o /dev/null -w '%{http_code}' -m 60 "${A[@]}" "$HOST/coin/address/$AD")"
 fi
+
+# A node still syncing answers every request, just from a short chain, so it
+# reports balances that are wrong rather than missing. hsd reports 1 once caught up.
+echo
+PROG=$(curl -s -m 30 -X POST "$HOST" -H "$JSON" "${A[@]}" -d '{"method":"getblockchaininfo","params":[]}' \
+       | sed -n 's/.*"verificationprogress":\([0-9.e-]*\).*/\1/p')
+python3 -c "
+p='$PROG'
+try:
+    v=float(p)
+except ValueError:
+    print('WARN  could not read sync progress'); raise SystemExit
+print('OK    node is synced' if v>=0.999 else f'FAIL  node is only {v*100:.1f}% synced - do not ship it as a default')
+raise SystemExit(0 if v>=0.999 else 1)
+" && SYNCED=1 || SYNCED=0
 
 # Probe a harmless method NEITHER project needs. If it answers, the RPC root is
 # unfiltered and stop/reset/generate/setban are reachable too.
@@ -103,5 +125,10 @@ fi
 echo
 echo "Shake Wallet:  $WP/$((WP+WF))"
 echo "Rosen Bridge:  $RP/$((RP+RF))"
-[ "$WF" -eq 0 ] && echo "=> usable as a Shake Wallet default host." \
-                || echo "=> NOT usable by Shake Wallet."
+if [ "$WF" -eq 0 ] && [ "${SYNCED:-1}" -eq 1 ]; then
+  echo "=> usable as a Shake Wallet default host."
+elif [ "$WF" -eq 0 ]; then
+  echo "=> endpoints are fine, but the node is NOT synced - do not ship it yet."
+else
+  echo "=> NOT usable by Shake Wallet."
+fi

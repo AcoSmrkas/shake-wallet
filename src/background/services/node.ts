@@ -10,6 +10,11 @@ const networkType = process.env.NETWORK_TYPE || 'main';
 const NAME_CACHE: string[] = [];
 const NAME_MAP: {[hash: string]: string} = {};
 
+// How far along a node's chain must be before its answers can be trusted. A
+// caught-up hsd reports exactly 1; anything materially below that is still
+// replaying history and will report balances that are simply wrong.
+const MIN_SYNC_PROGRESS = 0.999;
+
 export default class NodeService extends GenericService {
   store: typeof DB;
   network: typeof Network;
@@ -44,9 +49,35 @@ export default class NodeService extends GenericService {
     });
   };
 
-  getLatestBlock = async () => {
+  getLatestBlock = async (canRetry = true): Promise<any> => {
     const blockchainInfo = await this.getBlockchainInfo();
     const result = blockchainInfo?.result || {};
+
+    // A node that is still syncing answers everything, just from a short chain,
+    // so balances come back wrong rather than missing — the worst way to fail.
+    // Refuse its tip before anything is derived from it. hsd reports 1 once it
+    // has caught up.
+    const progress = result.verificationprogress;
+    if (progress != null && progress < MIN_SYNC_PROGRESS) {
+      const {apiHost, canFailover} = await this.exec("setting", "getAPI");
+      const percent = (progress * 100).toFixed(1);
+
+      if (canRetry && canFailover) {
+        const next = await this.exec("setting", "rotateAssignedHost", apiHost);
+        if (next) {
+          console.error(
+            `${apiHost} is only ${percent}% synced; switching to ${next}.`
+          );
+          return this.getLatestBlock(false);
+        }
+      }
+
+      throw new Error(
+        `Node ${apiHost} is still syncing (${percent}%). ` +
+          `Set a different RPC URL in Settings.`
+      );
+    }
+
     const height = result.blocks;
     const hash = result.bestblockhash;
 

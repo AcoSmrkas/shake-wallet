@@ -17,7 +17,11 @@ const EXPLORER_KEY = "explorer_key";
 // wallet calls — verify with scripts/check-hsd-host.sh before adding one.
 const DEFAULT_HOSTS = process.env.DEFAULT_HOST
   ? [process.env.DEFAULT_HOST]
-  : ["https://hsd.ergexplorer.com", "https://hns-sw.spaghettinode.com"];
+  : [
+      "https://hsd.ergexplorer.com",
+      "https://hns-sw.spaghettinode.com",
+      "https://hnsnode.dev",
+    ];
 const DEFAULT_API_KEY = process.env.DEFAULT_API_KEY || "";
 
 const pick = (hosts: string[]) =>
